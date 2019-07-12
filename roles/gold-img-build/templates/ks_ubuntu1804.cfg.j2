@@ -1,0 +1,103 @@
+#System authorization infomation
+auth  --useshadow  --enablemd5 
+
+#Installation media
+cdrom
+
+#Use text mode install
+text
+
+#Install OS instead of upgrade
+install
+
+#Do not configure the X Window System
+skipx
+
+#System keyboard
+keyboard gb
+
+#System mouse
+mouse
+
+#System timezone
+timezone --utc Europe/London
+
+#System language
+lang en_GB
+
+#Language modules to install
+langsupport en_GB
+
+#Firewall configuration
+firewall --disabled
+
+#Network information
+network --device=ens192 --bootproto=dhcp
+#network --device=ens192 --bootproto=static --ip=192.168.1.16 --netmask=255.255.255.192 --gateway=192.168.1.1 --nameserver=192.168.1.2
+
+#Root password
+#rootpw --disabled
+rootpw --iscrypted {{kickstart_info.rootpw}}
+
+#Initial user (user with sudo capabilities) 
+#user dougal --fullname "" --iscrypted --password <crypted_pw>
+preseed passwd/make-user boolean false
+
+#System bootloader configuration
+bootloader --location=mbr 
+
+#Clear the Master Boot Record
+zerombr yes
+
+#Partition clearing information
+clearpart --all --initlabel 
+
+#Basic disk partition
+part / --fstype ext4 --size 1 --grow --asprimary 
+#part swap --size 1024 
+#part /boot --fstype ext4 --size 1024 --asprimary 
+
+# Make minimalistic install
+preseed pkgsel/ubuntu-standard boolean false
+preseed base-installer/install-recommends boolean false
+preseed base-installer/kernel/override-image string linux-virtual
+preseed pkgsel/install-language-support boolean false
+
+# Policy for applying updates. May be "none" (no automatic updates), "unattended-upgrades" (install security updates automatically), or "landscape" (manage system with Landscape).
+preseed pkgsel/update-policy select none
+
+# Whether to upgrade packages after debootstrap. Allowed values: none, safe-upgrade, full-upgrade
+preseed pkgsel/upgrade select full-upgrade
+
+#Reboot after installation
+reboot
+
+
+%packages
+openssh-server
+open-vm-tools
+
+
+%post
+groupadd admin
+sed -i -e '/%admin/s/ALL$/NOPASSWD:ALL/' /etc/sudoers
+
+{% for user in kickstart_info.users -%}
+useradd -m --shell=/bin/bash --groups=admin --password='user.password' user.name
+{% endfor %}
+
+useradd -m --shell=/bin/bash shutdown
+echo "shutdown ALL=NOPASSWD: /sbin/shutdown" >> /etc/sudoers
+mkdir -p 0755 ~shutdown/.ssh/
+
+cat <<EOF >~shutdown/.ssh/authorized_keys
+{{kickstart_info.shutdown_user_pubkey}}
+EOF
+
+chown -R shutdown:shutdown ~shutdown/.ssh
+
+apt-get update
+apt-get -y dist-upgrade
+apt-get -y autoremove
+rm -f /var/cache/apt/*
+rm -f /var/lib/apt/lists/*

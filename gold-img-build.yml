@@ -1,0 +1,10 @@
+---
+
+- name: Create VM
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  roles:
+    - role: gold-img-build
+  tags: vm_create
+

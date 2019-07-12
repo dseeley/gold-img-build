@@ -1,0 +1,40 @@
+---
+
+- name: create temporary directory
+  tempfile:
+    state: directory
+    suffix: DockerTEMP
+  register: dockertempdir
+
+- template:
+    src: "{{item}}"
+    dest: "{{ dockertempdir.path }}/{{(item | splitext)[0]}}"
+  with_items:
+    - "Dockerfile.j2"
+    - "ks_ubuntu1804.cfg.j2"
+    - "ubuntu1804.json.j2"
+
+- copy:
+    content: "{{ lookup('vars', item) }}"
+    dest: "{{ dockertempdir.path }}/{{item}}"
+  with_items:
+    - "id_rsa_esxisvc_nopw"
+    - "id_rsa_shutdown_nopw"
+
+- name: Build Docker image
+  docker_image:
+    source: build
+    build:
+      path: "{{ dockertempdir.path }}"
+    force_source: true
+    name: ubuntu1804
+
+- name: Remove image
+  docker_image:
+    name: ubuntu1804
+    state: absent
+
+- name: Remove temporary directory
+  file:
+    path: "{{ dockertempdir.path }}"
+    state: absent

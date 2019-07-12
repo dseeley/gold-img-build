@@ -1,0 +1,27 @@
+ubuntu_iso:
+  url: "http://cdimage.ubuntu.com/releases/18.04.2/release/ubuntu-18.04.2-server-amd64.iso"
+  checksum: "a2cb36dc010d98ad9253ea5ad5a07fd6b409e3412c48f1860536970b073c98f5"
+
+packer_pkg_url: "https://releases.hashicorp.com/packer/1.4.2/packer_1.4.2_linux_amd64.zip"
+
+packerfile_fname: "ubuntu1804.json"
+packer_info:
+  img_name: "ubuntu1804-packer-template"
+  disk_size: "16384"
+  vmx_data:
+    memsize: "2048"
+    numvcpus: "2"
+    ethernet0_networkName: "THECROFT"
+
+kickstartfile_fname: "ks_ubuntu1804.cfg"
+kickstart_info:
+  rootpw: "FAKEPASSWD"
+  shutdown_user_pubkey: 'ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQC24deQzStOqHfui9HJf7SXVqnV/XZAgjne98opc+q2d36hZrWfSYJc+LSvqn5rmXXLZotQ0jnLq6pN/sCnEgti3a5jJqFNNVKxfQoupFz5xeUu2Ke12Y2/wmbHdxZnGol64B8+oYW8ivHtzxsdQkRjtWrwoy1zv/y1CNGrq+GIp4V41FQ/oixcm3NdSaiBqLdf+0poahJSaBAalwH8bCfI+yDx9osB2mkuNG9RNLu3fvzNfgd1NVcmm2vbjbqL9SM16eu7umSq4Q+aR9A9iyX573H3a8THJdDSaFEmSD0Tet81e8Fd+qLxYA7zuo51zDoNQ73pY5QjwLxqm3mqDvp0KDMezGNV3/btKcoyK7QIEtX/wpAo7slr4JZ12eVs8K25ezORtErPT1v0kDBe8Z6joYesUr66NWjL1U5fMEFUqkkWPLMvaSTYPTdDeuCriG6SNQkh1ne1ZrjsO/6vhB2YOjnmBIjdRogw+taRYQFv9iCAH77luOwZ6nkE2j+0qi59E6dlgdsullbY6+0/RcnYJDZtXiauzQUwRYiM8FQjUODFE9GLiSPv3wi8sqDhKj307ntLKkQBQhG3XGDP/iixXDyRWHXr+jmg+VJn7S8Dp24MP7CX+s/t/2Au9XyOAVQHPO9KTGzNtsdUWbj5bLwFtDbExISpF3N6LrMIXAJ80Q== root@ubuntu1804-template'
+  users:
+    name: dougal
+    password: "FAKEPASSWD"
+
+
+id_rsa_esxisvc_nopw: "FAKESSHKEY"
+
+id_rsa_shutdown_nopw: "FAKESSHKEY"
