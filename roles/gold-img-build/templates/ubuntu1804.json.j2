@@ -19,6 +19,7 @@
         "netcfg/get_domain=thecroft.local ",
         "netcfg/get_hostname=ubuntu1804-template ",
         "grub-installer/bootdev=/dev/sda ",
+        "debian-installer/add-kernel-opts string net.ifnames=0 biosdevname=0 ",
         "ks=floppy:/{{kickstartfile_fname}} ---<enter>"
       ],
       "boot_wait": "10s",

@@ -30,3 +30,17 @@ export VAULT_PASSWORD_BUILDENV=<'dev/stage/prod' password>
 ```
 ansible-playbook gold-img-build.yml
 ```
+
+### Test 
+##### Windows
+```
+$env:PACKER_LOG=1
+$env:PACKER_LOG_PATH="packerlog.txt"
+.\packer.exe build .\ubuntu1804.json
+```
+##### Linux
+```
+set PACKER_LOG=1
+set PACKER_LOG_PATH="packerlog.txt"
+./packer build ubuntu1804.json
+```

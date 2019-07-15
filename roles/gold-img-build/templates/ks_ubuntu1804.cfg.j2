@@ -32,14 +32,14 @@ langsupport en_GB
 firewall --disabled
 
 #Network information
-network --device=ens192 --bootproto=dhcp
-#network --device=ens192 --bootproto=static --ip=192.168.1.16 --netmask=255.255.255.192 --gateway=192.168.1.1 --nameserver=192.168.1.2
+network --bootproto=dhcp
+#network --bootproto=static --ip=192.168.1.16 --netmask=255.255.255.192 --gateway=192.168.1.1 --nameserver=192.168.1.2
 
 #Root password
 #rootpw --disabled
 rootpw --iscrypted {{kickstart_info.rootpw}}
 
-#Initial user (user with sudo capabilities) 
+#Initial user (user with sudo capabilities)
 #user dougal --fullname "" --iscrypted --password <crypted_pw>
 preseed passwd/make-user boolean false
 
@@ -79,6 +79,8 @@ open-vm-tools
 
 
 %post
+sed -ri 's/^(GRUB_CMDLINE_LINUX\s*=\s*)"(.*?)"$/\1"\2 net.ifnames=0 biosdevname=0"/' /etc/default/grub
+
 groupadd admin
 sed -i -e '/%admin/s/ALL$/NOPASSWD:ALL/' /etc/sudoers
 
