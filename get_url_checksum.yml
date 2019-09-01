@@ -1,0 +1,12 @@
+---
+
+- hosts: localhost
+  gather_facts: False
+  tasks:
+    - name: get checksum
+      stat:
+        path: "roles/gold-img-build/files/ubuntu-18.04.3-server-amd64.iso"
+        checksum_algorithm: sha256
+      register: st
+
+    - debug: msg={{st}}

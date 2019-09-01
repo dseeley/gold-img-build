@@ -25,14 +25,15 @@
     src: "{{item}}"
     dest: "{{ dockertempdir.path }}/{{item}}"
   with_items:
-    - "packer_1.4.2_linux_amd64.zip"
-    - "ubuntu-18.04.2-server-amd64.iso"
+    - "{{packer_pkg_url | basename}}"
+    - "{{ubuntu_iso.url | basename}}"
   when: copylocal is defined and copylocal|bool
 
 - name: Build Docker image
   docker_image:
     source: build
     build:
+      pull: yes
       path: "{{ dockertempdir.path }}"
     force_source: true
     name: ubuntu1804

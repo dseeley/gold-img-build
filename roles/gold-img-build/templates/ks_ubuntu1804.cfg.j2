@@ -76,6 +76,9 @@ reboot
 %packages
 openssh-server
 open-vm-tools
+cloud-init
+curl
+python3-pip
 
 
 %post
@@ -85,21 +88,32 @@ groupadd admin
 sed -i -e '/%admin/s/ALL$/NOPASSWD:ALL/' /etc/sudoers
 
 {% for user in kickstart_info.users -%}
-useradd -m --shell=/bin/bash --groups=admin --password='user.password' user.name
+useradd -m --shell=/bin/bash --groups=admin --password='{{user.password}}' {{user.name}}
 {% endfor %}
 
 useradd -m --shell=/bin/bash shutdown
 echo "shutdown ALL=NOPASSWD: /sbin/shutdown" >> /etc/sudoers
 mkdir -p 0755 ~shutdown/.ssh/
 
-cat <<EOF >~shutdown/.ssh/authorized_keys
+cat <<EOFKEY >~shutdown/.ssh/authorized_keys
 {{kickstart_info.shutdown_user_pubkey}}
-EOF
+EOFKEY
 
 chown -R shutdown:shutdown ~shutdown/.ssh
+
+{#cat <<EOFCLEAN >/etc/rc0.d/K99-cleanup#}
+{##!/bin/bash#}
+{#userdel -r shutdown#}
+{#sed -i 's/shutdown ALL.*//' /etc/sudoers#}
+{## Delete self#}
+{#rm $0#}
+{#EOFCLEAN#}
+{#chmod a+x /etc/rc0.d/K99-cleanup#}
 
 apt-get update
 apt-get -y dist-upgrade
 apt-get -y autoremove
 rm -f /var/cache/apt/*
 rm -f /var/lib/apt/lists/*
+
+curl -sSL https://raw.githubusercontent.com/vmware/cloud-init-vmware-guestinfo/master/install.sh | sh -
