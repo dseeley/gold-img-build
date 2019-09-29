@@ -41,6 +41,11 @@
         "memsize": "{{packer_info.vmx_data.memsize}}",
         "numvcpus": "{{packer_info.vmx_data.numvcpus}}",
         "vhv.enable": "TRUE",
+        {% if 'ethernet0_macAddress' in packer_info.vmx_data -%}
+        "ethernet0.addressType": "static",
+        "ethernet0.CheckMACAddress": "FALSE",
+        "ethernet0.address": "{{ packer_info.vmx_data.ethernet0_macAddress }}",
+        {% endif -%}
         "ethernet0.virtualDev": "vmxnet3",
         "ethernet0.networkName": "{{packer_info.vmx_data.ethernet0_networkName}}",
         "ethernet0.uptCompatibility": true,
@@ -51,10 +56,10 @@
       "vnc_disable_password": true,
       "version": 14,
       "remote_type": "esx5",
-      "remote_host": "192.168.1.3",
-      "remote_username": "svc",
+      "remote_host": "{{esxi.host}}",
+      "remote_username": "{{esxi.username}}",
       "remote_private_key_file": "./id_rsa_esxisvc_nopw",
-      "remote_datastore" : "sata-raid10-4tb-01",
+      "remote_datastore" : "{{esxi.datastore}}",
       "format": "vmx"
     }
   ]

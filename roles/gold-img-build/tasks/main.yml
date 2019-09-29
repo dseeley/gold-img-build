@@ -29,19 +29,31 @@
     - "{{ubuntu_iso.url | basename}}"
   when: copylocal is defined and copylocal|bool
 
-- name: Build Docker image
-  docker_image:
-    source: build
-    build:
-      pull: yes
-      path: "{{ dockertempdir.path }}"
-    force_source: true
-    name: ubuntu1804
+- name: Do it with Docker
+  block:
+  - name: Build Docker image
+    docker_image:
+      source: build
+      build:
+        pull: yes
+        path: "{{ dockertempdir.path }}"
+      force_source: true
+      name: ubuntu1804
 
-- name: Remove image
-  docker_image:
-    name: ubuntu1804
-    state: absent
+  - name: Remove image
+    docker_image:
+      name: ubuntu1804
+      state: absent
+  when: skip_docker is not defined and not skip_docker|bool
+
+- name: Do it without Docker
+  command: "{{item}}"
+  args:
+    chdir: "{{ dockertempdir.path }}"
+  with_items:
+    - "unzip {{packer_pkg_url | basename}}"
+    - "./packer build ./{{packerfile_fname}}"
+  when: skip_docker is defined and skip_docker|bool
 
 - name: Remove temporary directory
   file:
