@@ -64,7 +64,7 @@ preseed base-installer/kernel/override-image string linux-virtual
 preseed pkgsel/install-language-support boolean false
 
 # Policy for applying updates. May be "none" (no automatic updates), "unattended-upgrades" (install security updates automatically), or "landscape" (manage system with Landscape).
-preseed pkgsel/update-policy select none
+preseed pkgsel/update-policy select unattended-upgrades
 
 # Whether to upgrade packages after debootstrap. Allowed values: none, safe-upgrade, full-upgrade
 preseed pkgsel/upgrade select full-upgrade
@@ -84,31 +84,59 @@ python3-pip
 %post
 sed -ri 's/^(GRUB_CMDLINE_LINUX\s*=\s*)"(.*?)"$/\1"\2 net.ifnames=0 biosdevname=0"/' /etc/default/grub
 
+## Setup root ssh key
+mkdir -p /root/.ssh
+chmod 700 /root/.ssh
+echo "{{kickstart_info.rootpubkey}}" > /root/.ssh/authorized_keys
+chmod 600 /root/.ssh/authorized_keys
+
 groupadd admin
 sed -i -e '/%admin/s/ALL$/NOPASSWD:ALL/' /etc/sudoers
 
-{% for user in kickstart_info.users -%}
-useradd -m --shell=/bin/bash --groups=admin --password='{{user.password}}' {{user.name}}
+{% for adminuser in kickstart_info.adminusers %}
+useradd -m --shell=/bin/bash --groups=admin {% if adminuser.password is defined and adminuser.password != "" %}--password='{{adminuser.password}}'{% endif %} {{adminuser.name}}
+{% if adminuser.pubkey is defined and adminuser.pubkey != "" %}
+mkdir -p ~{{adminuser.name}}/.ssh/
+echo "{{adminuser.pubkey}}" > ~{{adminuser.name}}/.ssh/authorized_keys
+chown -R {{adminuser.name}}:{{adminuser.name}} ~{{adminuser.name}}/.ssh
+{% endif %}
 {% endfor %}
 
 useradd -m --shell=/bin/bash shutdown
 echo "shutdown ALL=NOPASSWD: /sbin/shutdown" >> /etc/sudoers
-mkdir -p 0755 ~shutdown/.ssh/
-
-cat <<EOFKEY >~shutdown/.ssh/authorized_keys
-{{kickstart_info.shutdown_user_pubkey}}
-EOFKEY
-
+mkdir -p ~shutdown/.ssh/
+echo "{{shutdown_keypair.public_key}}" > ~shutdown/.ssh/authorized_keys
 chown -R shutdown:shutdown ~shutdown/.ssh
 
-{#cat <<EOFCLEAN >/etc/rc0.d/K99-cleanup#}
-{##!/bin/bash#}
-{#userdel -r shutdown#}
-{#sed -i 's/shutdown ALL.*//' /etc/sudoers#}
-{## Delete self#}
-{#rm $0#}
-{#EOFCLEAN#}
-{#chmod a+x /etc/rc0.d/K99-cleanup#}
+cat <<EOFCLEAN >/etc/init.d/cleanup
+#!/bin/bash
+### BEGIN INIT INFO
+# Provides:          cleanup
+# Required-Start:    $remote_fs
+# Required-Stop:     $remote_fs
+# Default-Start:     2 3 4 5
+# Default-Stop:      0
+# Short-Description: cleanup after shutdown
+### END INIT INFO
+case "\$1" in
+start)
+touch /var/lock/subsys/cleanup
+;;
+stop)
+userdel -r shutdown
+sed -i 's/shutdown ALL.*//' /etc/sudoers
+update-rc.d cleanup remove
+rm \$0
+;;
+*)
+echo "Usage: /etc/init.d/cleanup stop"
+exit 1
+;;
+esac
+EOFCLEAN
+chmod a+x /etc/init.d/cleanup
+update-rc.d cleanup defaults
+
 
 apt-get update
 apt-get -y dist-upgrade

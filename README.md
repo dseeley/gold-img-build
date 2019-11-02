@@ -18,11 +18,9 @@ pipenv shell
 
 ### Credentials
 Credentials are encrypted inline in the playbooks using ansible-vault.  
-+ Where they are specific to a VPC environment (e.g. dev/stage etc), they are encrypted with environment-specific password, which should be exported in the environment variable: `VAULT_PASSWORD_BUILDENV`
-+ Where they are generic the are exported via `VAULT_PASSWORD_ALL`
++ They are specific to a VPC environment (e.g. dev/stage etc), they are encrypted with environment-specific password, which should be exported in the environment variable: `VAULT_PASSWORD_BUILDENV`
 
 ```
-export VAULT_PASSWORD_ALL=<'all' password>
 export VAULT_PASSWORD_BUILDENV=<'dev/stage/prod' password>
 ```
 

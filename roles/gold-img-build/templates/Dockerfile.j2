@@ -2,14 +2,14 @@ FROM ubuntu:18.04
 
 {% if  copylocal is defined and copylocal %}
 ##Faster version - copies from local instead of downloads.
-COPY {{packerfile_fname}} {{kickstartfile_fname}} id_rsa_shutdown_nopw id_rsa_esxisvc_nopw {{ubuntu_iso.url | basename}} {{packer_pkg_url | basename}} /goldimg/
+COPY {{packerfile_fname}} {{kickstartfile_fname}} id_rsa_shutdown id_rsa_esxisvc_nopw {{ubuntu_iso.url | basename}} {{packer_pkg_url | basename}} /goldimg/
 RUN cd goldimg \
   && apt-get update; apt-get -y install unzip \
   && unzip {{packer_pkg_url | basename}} \
   && ./packer build ./{{packerfile_fname}}
 
 {%  else %}
-COPY {{packerfile_fname}} {{kickstartfile_fname}} id_rsa_shutdown_nopw id_rsa_esxisvc_nopw /goldimg/
+COPY {{packerfile_fname}} {{kickstartfile_fname}} id_rsa_shutdown id_rsa_esxisvc_nopw /goldimg/
 RUN  cd goldimg \
   && apt-get update; apt-get -y install unzip wget \
   && wget {{ubuntu_iso.url}} \

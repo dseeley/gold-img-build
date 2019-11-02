@@ -6,6 +6,16 @@
     suffix: DockerTEMP
   register: dockertempdir
 
+- copy:
+    content: "{{ lookup('vars', item) }}"
+    dest: "{{ dockertempdir.path }}/{{item}}"
+  with_items:
+    - "id_rsa_esxisvc_nopw"
+
+- openssh_keypair:
+    path: "{{ dockertempdir.path }}/id_rsa_shutdown"
+  register: shutdown_keypair
+
 - template:
     src: "{{item}}"
     dest: "{{ dockertempdir.path }}/{{(item | splitext)[0]}}"
@@ -14,12 +24,6 @@
     - "ks_ubuntu1804.cfg.j2"
     - "ubuntu1804.json.j2"
 
-- copy:
-    content: "{{ lookup('vars', item) }}"
-    dest: "{{ dockertempdir.path }}/{{item}}"
-  with_items:
-    - "id_rsa_esxisvc_nopw"
-    - "id_rsa_shutdown_nopw"
 
 - copy:
     src: "{{item}}"
@@ -29,9 +33,9 @@
     - "{{ubuntu_iso.url | basename}}"
   when: copylocal is defined and copylocal|bool
 
-- name: Do it with Docker
+- name:
   block:
-  - name: Build Docker image
+  - name: Build Docker image (Packer build)
     docker_image:
       source: build
       build:
@@ -46,13 +50,13 @@
       state: absent
   when: skip_docker is not defined and not skip_docker|bool
 
-- name: Do it without Docker
+- name: Packer build without Docker
   command: "{{item}}"
   args:
     chdir: "{{ dockertempdir.path }}"
   with_items:
     - "unzip {{packer_pkg_url | basename}}"
-    - "./packer build ./{{packerfile_fname}}"
+    - "./packer build -on-error=abort ./{{packerfile_fname}}"
   when: skip_docker is defined and skip_docker|bool
 
 - name: Remove temporary directory
