@@ -82,7 +82,11 @@ python3-pip
 
 
 %post
+## Force the original eth[n] naming convention
 sed -ri 's/^(GRUB_CMDLINE_LINUX\s*=\s*)"(.*?)"$/\1"\2 net.ifnames=0 biosdevname=0"/' /etc/default/grub
+
+## Force primary NIC to be at the top of the open-vm-tools guestinfo list (for future Ansible playbooks)
+echo "\n[guestinfo]\nprimary-nics=e*\nlow-priority-nics=vlan*\n" >> /etc/vmware-tools/tools.conf
 
 ## Setup root ssh key
 mkdir -p /root/.ssh
