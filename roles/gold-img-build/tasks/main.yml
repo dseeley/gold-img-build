@@ -9,6 +9,7 @@
 - copy:
     content: "{{ lookup('vars', item) }}"
     dest: "{{ dockertempdir.path }}/{{item}}"
+    mode: '0600'
   with_items:
     - "id_rsa_esxisvc_nopw"
 
