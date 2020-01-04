@@ -2,8 +2,6 @@
   "builders": [
     {
       "type": "vmware-iso",
-      "boot_key_interval": "10ms",
-      "floppy_files": ["{{kickstartfile_fname}}"],
       "boot_command": [
         "<enter><f6><esc><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs> ",
         "/install/vmlinuz ",
@@ -16,51 +14,52 @@
         "fb=false ",
         "initrd=/install/initrd.gz ",
         "locale=en_GB.UTF-8 ",
-        "netcfg/get_domain=local.dougalseeley.com ",
-        "netcfg/get_hostname=ubuntu1804-template ",
+        "netcfg/get_hostname={{base_os.id}}-template ",
         "grub-installer/bootdev=/dev/sda ",
         "debian-installer/add-kernel-opts string net.ifnames=0 biosdevname=0 ",
         "ks=floppy:/{{kickstartfile_fname}} ---<enter>"
       ],
+      "boot_key_interval": "10ms",
       "boot_wait": "10s",
-      "skip_compaction": true,
       "disk_size": {{packer_info.disk_size}},
       "disk_type_id": "thin",
-      "guest_os_type": "ubuntu-64",
-      "iso_checksum": "{{ubuntu_iso.checksum}}",
-      "iso_checksum_type": "sha256",
-      "iso_url": "{{ubuntu_iso.url | basename}}",
+      "floppy_files": ["{{kickstartfile_fname}}"],
+      "format": "vmx",
+      "guest_os_type": "{{base_os.type}}",
+      "headless": true,
+      "iso_checksum": "{{base_os.iso_checksum | default("''")}}",
+      "iso_checksum_type": "{{base_os.iso_checksum_type}}",
+      "iso_url": "{{base_os.iso_url | basename}}",
+      "keep_registered": true,
+      "remote_datastore" : "{{esxi.datastore}}",
+      "remote_host": "{{esxi.host}}",
+      "remote_private_key_file": "./id_rsa_esxisvc_nopw",
+      "remote_type": "esx5",
+      "remote_username": "{{esxi.username}}",
+      "shutdown_command": "sudo shutdown -h now",
+      "skip_compaction": true,
+      "skip_export": true,
       "ssh_username": "shutdown",
       "ssh_private_key_file": "./id_rsa_shutdown",
       "ssh_port": 22,
       "ssh_wait_timeout": "10000s",
-      "shutdown_command": "sudo shutdown -h now",
-      "headless": true,
+      "version": "{{packer_info.hw_version}}",
       "vm_name": "{{packer_info.img_name}}",
       "vmx_data": {
+        {% if 'ethernet0_macAddress' in packer_info.vmx_data -%}
+        "ethernet0.address": "{{packer_info.vmx_data.ethernet0_macAddress}}",
+        "ethernet0.addressType": "static",
+        "ethernet0.CheckMACAddress": false,
+        {% endif -%}
+        "ethernet0.networkName": "{{packer_info.vmx_data.ethernet0_networkName}}",
+        "ethernet0.present": true,
+        "ethernet0.uptCompatibility": true,
+        "ethernet0.virtualDev": "vmxnet3",
         "memsize": "{{packer_info.vmx_data.memsize}}",
         "numvcpus": "{{packer_info.vmx_data.numvcpus}}",
-        "vhv.enable": "TRUE",
-        {% if 'ethernet0_macAddress' in packer_info.vmx_data -%}
-        "ethernet0.addressType": "static",
-        "ethernet0.CheckMACAddress": "FALSE",
-        "ethernet0.address": "{{ packer_info.vmx_data.ethernet0_macAddress }}",
-        {% endif -%}
-        "ethernet0.virtualDev": "vmxnet3",
-        "ethernet0.networkName": "{{packer_info.vmx_data.ethernet0_networkName}}",
-        "ethernet0.uptCompatibility": true,
-        "ethernet0.present": "TRUE"
+        "vhv.enable": true
       },
-      "skip_export": true,
-      "keep_registered": true,
-      "vnc_disable_password": true,
-      "version": 14,
-      "remote_type": "esx5",
-      "remote_host": "{{esxi.host}}",
-      "remote_username": "{{esxi.username}}",
-      "remote_private_key_file": "./id_rsa_esxisvc_nopw",
-      "remote_datastore" : "{{esxi.datastore}}",
-      "format": "vmx"
+      "vnc_disable_password": true
     }
   ]
 }

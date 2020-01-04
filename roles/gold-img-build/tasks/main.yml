@@ -19,11 +19,11 @@
 
 - template:
     src: "{{item}}"
-    dest: "{{ dockertempdir.path }}/{{(item | splitext)[0]}}"
+    dest: "{{ dockertempdir.path }}/{{(item | basename | splitext)[0]}}"
   with_items:
     - "Dockerfile.j2"
-    - "ks_ubuntu1804.cfg.j2"
-    - "ubuntu1804.json.j2"
+    - "packer/{{packerfile_fname}}.j2"
+    - "kickstart/{{kickstartfile_fname}}.j2"
 
 
 - copy:
@@ -31,25 +31,24 @@
     dest: "{{ dockertempdir.path }}/{{item}}"
   with_items:
     - "{{packer_pkg_url | basename}}"
-    - "{{ubuntu_iso.url | basename}}"
+    - "{{base_os.iso_url | basename}}"
   when: copylocal is defined and copylocal|bool
 
-- name:
-  block:
-  - name: Build Docker image (Packer build)
+- block:
+  - name: Packer build within Docker
     docker_image:
       source: build
       build:
         pull: yes
         path: "{{ dockertempdir.path }}"
       force_source: true
-      name: ubuntu1804
+      name: "{{packer_info.img_name}}"
 
   - name: Remove image
     docker_image:
-      name: ubuntu1804
+      name: "{{packer_info.img_name}}"
       state: absent
-  when: skip_docker is not defined and not skip_docker|bool
+  when: skip_docker is not defined or not skip_docker|bool
 
 - name: Packer build without Docker
   command: "{{item}}"

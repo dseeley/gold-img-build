@@ -84,8 +84,9 @@ python3-pip
 %post
 ## Force the original eth[n] naming convention
 sed -ri 's/^(GRUB_CMDLINE_LINUX\s*=\s*)"(.*?)"$/\1"\2 net.ifnames=0 biosdevname=0"/' /etc/default/grub
+grub-mkconfig -o /boot/grub/grub.cfg
 
-## Force primary NIC to be at the top of the open-vm-tools guestinfo list (for future Ansible playbooks)
+## Force primary NIC to be at the top of the output from 'open-vm-tools guestinfo list' (for future Ansible playbooks)
 echo "\n[guestinfo]\nprimary-nics=e*\nlow-priority-nics=vlan*\n" >> /etc/vmware-tools/tools.conf
 
 ## Setup root ssh key
@@ -127,7 +128,8 @@ start)
 touch /var/lock/subsys/cleanup
 ;;
 stop)
-userdel -r shutdown
+pkill -KILL -u shutdown
+userdel -f -r shutdown
 sed -i 's/shutdown ALL.*//' /etc/sudoers
 update-rc.d cleanup remove
 rm \$0
@@ -138,14 +140,14 @@ exit 1
 ;;
 esac
 EOFCLEAN
+
 chmod a+x /etc/init.d/cleanup
 update-rc.d cleanup defaults
 
+curl -sSL https://raw.githubusercontent.com/vmware/cloud-init-vmware-guestinfo/master/install.sh | sh -
 
 apt-get update
 apt-get -y dist-upgrade
 apt-get -y autoremove
 rm -f /var/cache/apt/*
 rm -f /var/lib/apt/lists/*
-
-curl -sSL https://raw.githubusercontent.com/vmware/cloud-init-vmware-guestinfo/master/install.sh | sh -

@@ -1,27 +1,39 @@
 esxi:
+  username: "svc"
   host: "192.168.1.3"
   datastore: "4tb-evo860-ssd"
 #  host: "10.189.132.4"
 #  datastore: "datastore1"
-  username: "svc"
 
-ubuntu_iso:
-  url: "http://cdimage.ubuntu.com/releases/18.04.3/release/ubuntu-18.04.3-server-amd64.iso"
-  checksum: "7d8e0055d663bffa27c1718685085626cb59346e7626ba3d3f476322271f573e"
+#base_os:
+#  id: "ubuntu2004"
+#  type: "ubuntu-64"
+#  iso_url: "http://cdimage.ubuntu.com/ubuntu-server/daily/current/focal-server-amd64.iso"
+#  iso_checksum: ""
+#  iso_checksum_type: "none"
 
-packer_pkg_url: "https://releases.hashicorp.com/packer/1.4.5/packer_1.4.5_linux_amd64.zip"
+base_os:
+  id: "ubuntu1804"
+  type: "ubuntu-64"
+  iso_url: "http://cdimage.ubuntu.com/releases/18.04.3/release/ubuntu-18.04.3-server-amd64.iso"
+  iso_checksum: "7d8e0055d663bffa27c1718685085626cb59346e7626ba3d3f476322271f573e"     # http://cdimage.ubuntu.com/releases/18.04.3/release/SHA256SUMS
+  iso_checksum_type: "sha256"
 
-packerfile_fname: "ubuntu1804.json"
+
+packer_pkg_url: "https://releases.hashicorp.com/packer/1.5.1/packer_1.5.1_linux_amd64.zip"
+
+packerfile_fname: "{{base_os.id}}.json"
 packer_info:
-  img_name: "gold-ubuntu1804-{{ lookup('pipe','date +%Y%m%d%H%M%S') }}"
+  img_name: "gold-{{base_os.id}}-{{ lookup('pipe','date +%Y%m%d%H%M%S') }}"
   disk_size: "16384"
+  hw_version: 15
   vmx_data:
     memsize: "2048"
     numvcpus: "2"
     ethernet0_networkName: "VM Network"
 #    ethernet0_macAddress: "00:0c:29:f2:dc:da"
 
-kickstartfile_fname: "ks_ubuntu1804.cfg"
+kickstartfile_fname: "{{base_os.id}}.cfg"
 kickstart_info:
   rootpw: "FAKEPASSWD"
   rootpubkey: 'ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQC4kofxVWqkzhqXWMG78g/WuBsnwKQceTPABwTFNnR3lH/Cw47NVOHOgWw+ZRNNsLO5r8HOEOB4TEFhgQTDjNPtBQSOk4B5vnvoCgzecjukWC0+V/8NKwKVq7BRET9EuNx8u6wEb25wBkWbNESF1GrjkBMMqiAstipkiyaj3DNlbABKi6UeKjp72u2aH6kkn8XhqHGkLC2oJMJyVnCsdqntMEZhhDJuqGyVnbtXG9Un5KNOhSs8Q4Cn1B5GATzvxbW9WM2o+sqUuMoJS09ASrf1RgABXghP0e3Pi8hUvXpxEG3NUYweigGNIGtzMf7H5MeiY90z+KE6r/iZi5oEvwPv61RHa+M7bUDD3mo8WZY7gAhF+l4fkRhdBBDemspEBzgDX6FenQV+/flmHhCJKy6U6Xu22Us14x4YSqdhTMSPIdmdy0zBQGXXF2Y7qDTSRnUqCyWGk2vxXaaJ49MrWNKn1GUR6kUulH9YRnhJMAgdboMRDCuL2ZKKppz1qr6erkzWh5792hSQT70xLzjGrXqPUCBXOvFzuPH4wKZr8cI0cQk/XkceDssjdvCZxy8pT0oIVVQ9DevGObiSg9ajWSMK2tHtticwciYHzlOiPWiKVrjjyeowEgFuJIMS88HADvbL0Hg+vw8e2TgA18t6eIB8tOysAo9dQbozF6UEiDk2fQ=='
