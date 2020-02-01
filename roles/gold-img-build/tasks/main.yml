@@ -7,11 +7,9 @@
   register: dockertempdir
 
 - copy:
-    content: "{{ lookup('vars', item) }}"
-    dest: "{{ dockertempdir.path }}/{{item}}"
+    content: "{{ esxi.private_key }}"
+    dest: "{{ dockertempdir.path }}/esxi_private_key"
     mode: '0600'
-  with_items:
-    - "id_rsa_esxisvc_nopw"
 
 - openssh_keypair:
     path: "{{ dockertempdir.path }}/id_rsa_shutdown"

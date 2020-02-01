@@ -19,28 +19,48 @@ Builds 'golden' esxi image from base iso + yum/apt updates
     chmod +t /etc/vmware/firewall/service.xml
     Then append the range we want to open to the end of the file:
     
+    <!-- Allow inbound VNC for Packer -->
     <service id="1000">
       <id>packer-vnc</id>
       <rule id="0000">
         <direction>inbound</direction>
         <protocol>tcp</protocol>
         <porttype>dst</porttype>
-        <port>
+      <port>
           <begin>5900</begin>
-          <end>6000</end>
-        </port>
+         <end>6000</end>
+         </port>
       </rule>
       <enabled>true</enabled>
       <required>true</required>
     </service>
+  
+  
     Finally, restore the permissions and reload the firewall:
     
     chmod 444 /etc/vmware/firewall/service.xml
     esxcli network firewall refresh
     ```
 
++ If you are using (or want to use) a non-root account to connect to ESXi:
+  + In the UI, navigate to /host/manage/security/users
+    + Add a user of your choice, e.g. `user`
+  + In the UI, navigate to /host/, and select Actions/Permissions
+    + Click Add User, and add the `svc` user.  Give it Administrator Role.
+  + If you want to login using public key:
+    + Generate a key pair `ssh-keygen -t rsa -f id_rsa_esxisvc`
+    + On the ESXi host, add the ssh directory for the `svc` user: `mkdir /etc/ssh/keys-svc`
+    + On the ESXi host, copy the public key (`id_rsa_esxisvc.pub`) to `/etc/ssh/keys-svc/authorized_keys`
+    + On the ESXi host, change the permissions of the files: 
+      + `chown -R svc: /etc/ssh/keys-svc/`
+      + `chmod +t /etc/ssh/keys-svc/authorized_keys`
+      + `chmod og-r /etc/ssh/keys-svc/authorized_keys`
+    + Restart SSH `/etc/init.d/SSH restart`
+    + Make the authorized_keys file persistent:
+      + `/sbin/auto-backup.sh`
 
-### Credentials
+
+### Ansible Vault Secrets
 Credentials are encrypted inline in the playbooks using ansible-vault.  
 ```
 export VAULT_PASSWORD=<password>
