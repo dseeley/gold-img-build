@@ -131,6 +131,8 @@ stop)
 pkill -KILL -u shutdown
 userdel -f -r shutdown
 sed -i 's/shutdown ALL.*//' /etc/sudoers
+# reset the machine-id to 0 so it is regenerated at next startup (when it is cloned), because this is the default dhcp unique identifier
+truncate -s0 /etc/machine-id
 update-rc.d cleanup remove
 rm \$0
 ;;
