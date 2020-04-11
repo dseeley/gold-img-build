@@ -88,6 +88,8 @@ grub-mkconfig -o /boot/grub/grub.cfg
 
 ## Force primary NIC to be at the top of the output from 'open-vm-tools guestinfo list' (for future Ansible playbooks)
 echo "\n[guestinfo]\nprimary-nics=e*\nlow-priority-nics=vlan*\n" >> /etc/vmware-tools/tools.conf
+## Set open-vm-tools polling interval to 7s so we get the IP address back faster (default 30s)
+echo "poll-interval=7\n" >> /etc/vmware-tools/tools.conf
 
 ## Setup root ssh key
 mkdir -p /root/.ssh
@@ -150,7 +152,6 @@ curl -sSL https://raw.githubusercontent.com/vmware/cloud-init-vmware-guestinfo/m
 
 apt-get update
 apt-get -y dist-upgrade
-apt-get -y autoremove
+apt-get --purge -y autoremove
 rm -f /var/cache/apt/*
 rm -f /var/lib/apt/lists/*
-

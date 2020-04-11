@@ -13,38 +13,35 @@ Builds 'golden' esxi image from base iso + yum/apt updates
     ```
     Packer connects to the VM using VNC, so we’ll open a range of ports to allow it to connect to it.
     
-    First, ensure we can edit the firewall configuration:
+    cat <<EOFVNC >/etc/vmware/firewall/vnc.xml
+    <ConfigRoot>
+      <!-- Allow inbound VNC for Packer -->
+      <service id="1000">
+        <id>packer-vnc</id>
+        <rule id="0000">
+          <direction>inbound</direction>
+          <protocol>tcp</protocol>
+          <porttype>dst</porttype>
+        <port>
+            <begin>5900</begin>
+           <end>6000</end>
+           </port>
+        </rule>
+        <enabled>true</enabled>
+        <required>true</required>
+      </service>
+    </ConfigRoot>
+    EOFVNC
+ 
+    Update the permissions and reload the firewall:
     
-    chmod 644 /etc/vmware/firewall/service.xml
-    chmod +t /etc/vmware/firewall/service.xml
-    Then append the range we want to open to the end of the file:
-    
-    <!-- Allow inbound VNC for Packer -->
-    <service id="1000">
-      <id>packer-vnc</id>
-      <rule id="0000">
-        <direction>inbound</direction>
-        <protocol>tcp</protocol>
-        <porttype>dst</porttype>
-      <port>
-          <begin>5900</begin>
-         <end>6000</end>
-         </port>
-      </rule>
-      <enabled>true</enabled>
-      <required>true</required>
-    </service>
-  
-  
-    Finally, restore the permissions and reload the firewall:
-    
-    chmod 444 /etc/vmware/firewall/service.xml
+    chmod 444 /etc/vmware/firewall/vnc.xml
     esxcli network firewall refresh
     ```
 
 + If you are using (or want to use) a non-root account to connect to ESXi:
   + In the UI, navigate to /host/manage/security/users
-    + Add a user of your choice, e.g. `user`
+    + Add a user of your choice, e.g. `svc`
   + In the UI, navigate to /host/, and select Actions/Permissions
     + Click Add User, and add the `svc` user.  Give it Administrator Role.
   + If you want to login using public key:
