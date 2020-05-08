@@ -1,63 +1,91 @@
 ---
+#
+#- debug:
+#    msg: "{{userinfo | selectattr('groups', 'search', '\\badmin\\b') | list}}"
+#
+#- pause:
 
 - name: create temporary directory
   tempfile:
     state: directory
-    suffix: DockerTEMP
-  register: dockertempdir
+    suffix: EsxiBuildTEMP
+  register: tmp_build_dir
 
-- copy:
-    content: "{{ esxi.private_key }}"
-    dest: "{{ dockertempdir.path }}/esxi_private_key"
-    mode: '0600'
+- name: "Create {{os_id}} directory"
+  file:
+    path: "{{ tmp_build_dir.path }}/{{os_id}}"
+    state: directory
+  register: tmp_build_dir_installer_files
 
-- openssh_keypair:
-    path: "{{ dockertempdir.path }}/id_rsa_shutdown"
-  register: shutdown_keypair
+#- copy:
+#    content: "{{ esxi.private_key }}"
+#    dest: "{{ tmp_build_dir.path }}/esxi_private_key"
+#    mode: '0600'
+
+#- openssh_keypair:
+#    path: "{{ tmp_build_dir.path }}/id_rsa_shutdown"
+#  register: shutdown_keypair
+
+- set_fact:
+    shutdown_password: "{{ lookup('password', '/dev/null length=16') }}"
 
 - template:
-    src: "{{item}}"
-    dest: "{{ dockertempdir.path }}/{{(item | basename | splitext)[0]}}"
-  with_items:
-    - "Dockerfile.j2"
-    - "packer/{{packerfile_fname}}.j2"
-    - "kickstart/{{kickstartfile_fname}}.j2"
+    src: "Dockerfile.j2"
+    dest: "{{ tmp_build_dir.path }}/Dockerfile"
+
+- template:
+    src: "{{item.src}}"
+    dest: "{{tmp_build_dir_installer_files.path}}/{{(item.src | basename | splitext)[0]}}"
+  with_filetree: "templates/{{os_id}}/"
+  when: item.state == 'file'
 
 
 - copy:
     src: "{{item}}"
-    dest: "{{ dockertempdir.path }}/{{item}}"
+    dest: "{{ tmp_build_dir.path }}/{{item}}"
   with_items:
     - "{{packer_pkg_url | basename}}"
-    - "{{base_os.iso_url | basename}}"
+    - "{{base_os[os_id].iso_url | basename}}"
   when: copylocal is defined and copylocal|bool
 
 - block:
-  - name: Packer build within Docker
+  - name: Packer build Docker image
     docker_image:
       source: build
       build:
         pull: yes
-        path: "{{ dockertempdir.path }}"
+        path: "{{ tmp_build_dir.path }}"
       force_source: true
-      name: "{{packer_info.img_name}}"
+      name: "{{packer_info.img_name}}:latest"
+    register: r__docker_image
 
-  - name: Remove image
+  - name: Packer create and run the Docker container
+    docker_container:
+      cleanup: yes
+      detach: no
+      name: "{{packer_info.img_name}}"
+      image: "{{r__docker_image.image.Id}}"
+      state: started
+      restart_policy: "no"
+      network_mode: host
+
+  - name: Packer remove Docker image
     docker_image:
       name: "{{packer_info.img_name}}"
+      force_absent: yes
       state: absent
   when: skip_docker is not defined or not skip_docker|bool
 
 - name: Packer build without Docker
   command: "{{item}}"
   args:
-    chdir: "{{ dockertempdir.path }}"
+    chdir: "{{ tmp_build_dir.path }}"
   with_items:
     - "unzip {{packer_pkg_url | basename}}"
-    - "./packer build -on-error=abort ./{{packerfile_fname}}"
+    - "./packer build -on-error=abort ./{{os_id}}/packer.json"
   when: skip_docker is defined and skip_docker|bool
 
 - name: Remove temporary directory
   file:
-    path: "{{ dockertempdir.path }}"
+    path: "{{ tmp_build_dir.path }}"
     state: absent

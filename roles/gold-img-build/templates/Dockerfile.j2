@@ -1,22 +1,23 @@
 FROM ubuntu:18.04
 
+{#Faster version - copies from local instead of downloads.#}
 {% if  copylocal is defined and copylocal %}
 
-##Faster version - copies from local instead of downloads.
-COPY {{packerfile_fname}} {{kickstartfile_fname}} id_rsa_shutdown esxi_private_key {{base_os.iso_url | basename}} {{packer_pkg_url | basename}} /goldimg/
-RUN cd goldimg \
-  && apt-get update; apt-get -y install unzip \
-  && unzip {{packer_pkg_url | basename}} \
-  && ./packer build ./{{packerfile_fname}}
+COPY {{os_id}}/* /{{os_id}}/
+COPY {{base_os[os_id].iso_url | basename}} {{packer_pkg_url | basename}} /
+RUN apt-get update; \
+    apt-get -y install unzip && \
+    unzip {{packer_pkg_url | basename}}
+CMD ["./packer", "build", "-on-error=abort", "{{os_id}}/packer.json"]
 
 {%  else %}
 
-COPY {{packerfile_fname}} {{kickstartfile_fname}} id_rsa_shutdown esxi_private_key /goldimg/
-RUN  cd goldimg \
-  && apt-get update; apt-get -y install unzip wget \
-  && wget {{base_os.iso_url}} \
+COPY {{os_id}}/* /{{os_id}}/
+RUN  apt-get update; apt-get -y install unzip wget \
+  && wget {{base_os[os_id].iso_url}} \
   && wget {{packer_pkg_url}} \
-  && unzip {{packer_pkg_url | basename}} \
-  && ./packer build ./{{packerfile_fname}}
+  && unzip {{packer_pkg_url | basename}}
+
+CMD ["./packer", "build", "-on-error=abort", "{{os_id}}/packer.json"]
 
 {% endif %}

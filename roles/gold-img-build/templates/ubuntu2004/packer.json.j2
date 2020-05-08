@@ -1,0 +1,57 @@
+{
+  "builders": [
+    {
+      "type": "vmware-iso",
+      "boot_command": [
+        "<rightShift><enter><f6><esc><wait1s><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs>",
+        "/casper/vmlinuz ",
+        "autoinstall ",
+        "initrd=/casper/initrd quiet ",
+        "grub-installer/bootdev=/dev/sda ",
+        "net.ifnames=0 biosdevname=0 ",
+        "ds=nocloud-net;s=http://{% raw %}{{ .HTTPIP }}:{{ .HTTPPort }}{% endraw %}/ ---<enter>"
+      ],
+      "boot_key_interval": "10ms",
+      "boot_wait": "3s",
+      "communicator": "none",
+      "disk_size": {{packer_info.disk_size}},
+      "disk_type_id": "thin",
+{#      "floppy_dirs": "./{{os_id}}/*",#}
+{#      "floppy_label": "CIDATA",#}
+      "format": "vmx",
+      "guest_os_type": "{{base_os[os_id].type}}",
+      "headless": true,
+      "http_directory": "./{{os_id}}",
+      "iso_checksum": "{{base_os[os_id].iso_checksum | default("''")}}",
+      "iso_checksum_type": "{{base_os[os_id].iso_checksum_type}}",
+      "iso_url": "{{base_os[os_id].iso_url | basename}}",
+      "keep_registered": true,
+      "remote_datastore" : "{{esxi.datastore}}",
+      "remote_host": "{{esxi.host}}",
+      "remote_password": "{{esxi.password}}",
+      "remote_type": "esx5",
+      "remote_username": "{{esxi.username}}",
+      "shutdown_command": "#dummy_to_prevent_packer_doing_forcible_poweroff",
+      "shutdown_timeout": "10m",
+      "skip_compaction": true,
+      "skip_export": true,
+      "version": "{{packer_info.hw_version}}",
+      "vm_name": "{{packer_info.img_name}}",
+      "vmx_data": {
+        {% if 'ethernet0_macAddress' in packer_info.vmx_data -%}
+        "ethernet0.address": "{{packer_info.vmx_data.ethernet0_macAddress}}",
+        "ethernet0.addressType": "static",
+        "ethernet0.CheckMACAddress": false,
+        {% endif -%}
+        "ethernet0.networkName": "{{packer_info.vmx_data.ethernet0_networkName}}",
+        "ethernet0.present": true,
+        "ethernet0.uptCompatibility": true,
+        "ethernet0.virtualDev": "vmxnet3",
+        "memsize": "{{packer_info.vmx_data.memsize}}",
+        "numvcpus": "{{packer_info.vmx_data.numvcpus}}",
+        "vhv.enable": true
+      },
+      "vnc_disable_password": true
+    }
+  ]
+}

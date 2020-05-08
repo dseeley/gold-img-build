@@ -1,5 +1,13 @@
 ---
 
+- name: Preflight check
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+    - assert: { that: "ansible_version.full is version_compare('2.9', '>=')", msg: "Ansible >=2.9 required." }
+    - assert: { that: "os_id is defined and os_id is defined", msg: "Please define os_id (an entry under base_os in defaults/main.yml)" }
+
 - name: Create VM
   hosts: localhost
   connection: local

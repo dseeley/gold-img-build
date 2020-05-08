@@ -65,8 +65,11 @@ export VAULT_PASSWORD=<password>
 
 ## Invocation
 ```
-ansible-playbook gold-img-build.yml
+ansible-playbook gold-img-build.yml -e os_id=[ubuntu1804|ubuntu2004]
 ```
+
+### Mandatory command-line variables:
++ `-e os_id=<ubuntu1804>` - an entry under base_os in `defaults/main.yml`
 
 ### Optional extra variables:
 + `-e copylocal=true` - Copies the Ubuntu base image and Packer executable from the local Ansible directory, rather than downloading them _(default: false)_.  

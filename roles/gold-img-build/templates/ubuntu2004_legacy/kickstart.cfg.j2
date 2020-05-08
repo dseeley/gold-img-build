@@ -37,7 +37,7 @@ network --bootproto=dhcp
 
 #Root password
 #rootpw --disabled
-rootpw --iscrypted {{kickstart_info.rootpw}}
+rootpw --iscrypted {{rootinfo.passwd}}
 
 #Initial user (user with sudo capabilities)
 #user dougal --fullname "" --iscrypted --password <crypted_pw>
@@ -69,7 +69,7 @@ preseed pkgsel/update-policy select unattended-upgrades
 # Whether to upgrade packages after debootstrap. Allowed values: none, safe-upgrade, full-upgrade
 preseed pkgsel/upgrade select full-upgrade
 
-#Reboot after installation
+#poweroff/ reboot after installation
 reboot
 
 
@@ -94,26 +94,27 @@ echo "poll-interval=7\n" >> /etc/vmware-tools/tools.conf
 ## Setup root ssh key
 mkdir -p /root/.ssh
 chmod 700 /root/.ssh
-echo "{{kickstart_info.rootpubkey}}" > /root/.ssh/authorized_keys
+echo "{{rootinfo.ssh_authorized_keys | join('\n')}}" > /root/.ssh/authorized_keys
 chmod 600 /root/.ssh/authorized_keys
 
 groupadd admin
 sed -i -e '/%admin/s/ALL$/NOPASSWD:ALL/' /etc/sudoers
 
-{% for adminuser in kickstart_info.adminusers %}
-useradd -m --shell=/bin/bash --groups=admin {% if adminuser.password is defined and adminuser.password != "" %}--password='{{adminuser.password}}'{% endif %} {{adminuser.name}}
-{% if adminuser.pubkey is defined and adminuser.pubkey != "" %}
+{% for adminuser in userinfo | selectattr('groups', 'search', '\\badmin\\b') | list %}
+useradd -m --shell=/bin/bash --groups=admin {% if adminuser.passwd is defined and adminuser.passwd != "" %}--password='{{adminuser.passwd}}'{% endif %} {{adminuser.name}}
+{% if adminuser.ssh_authorized_keys is defined and adminuser.ssh_authorized_keys | length>0 %}
 mkdir -p ~{{adminuser.name}}/.ssh/
-echo "{{adminuser.pubkey}}" > ~{{adminuser.name}}/.ssh/authorized_keys
+echo "{{adminuser.ssh_authorized_keys | join('\n')}}" > ~{{adminuser.name}}/.ssh/authorized_keys
 chown -R {{adminuser.name}}:{{adminuser.name}} ~{{adminuser.name}}/.ssh
 {% endif %}
 {% endfor %}
 
 useradd -m --shell=/bin/bash shutdown
+echo 'shutdown:{{shutdown_password}}' | chpasswd
 echo "shutdown ALL=NOPASSWD: /sbin/shutdown" >> /etc/sudoers
-mkdir -p ~shutdown/.ssh/
-echo "{{shutdown_keypair.public_key}}" > ~shutdown/.ssh/authorized_keys
-chown -R shutdown:shutdown ~shutdown/.ssh
+{#mkdir -p ~shutdown/.ssh/#}
+{#echo "{{shutdown_keypair.public_key}}" > ~shutdown/.ssh/authorized_keys#}
+{#chown -R shutdown:shutdown ~shutdown/.ssh#}
 
 cat <<EOFCLEAN >/etc/init.d/cleanup
 #!/bin/bash
@@ -148,9 +149,13 @@ EOFCLEAN
 chmod a+x /etc/init.d/cleanup
 update-rc.d cleanup defaults
 
+apt-get update
+
+apt-get -y install python3-setuptools
+apt-get -y install python3-wheel
+apt-get -y install python3-netifaces
 curl -sSL https://raw.githubusercontent.com/vmware/cloud-init-vmware-guestinfo/master/install.sh | sh -
 
-apt-get update
 apt-get -y dist-upgrade
 apt-get --purge -y autoremove
 rm -f /var/cache/apt/*
