@@ -4,10 +4,10 @@ FROM ubuntu:18.04
 {% if  copylocal is defined and copylocal %}
 
 COPY {{os_id}}/* /{{os_id}}/
-COPY {{base_os[os_id].iso_url | basename}} {{packer_pkg_url | basename}} /
+COPY {{base_os[os_id].iso_url | basename}} {{packer_info.pkg_url | basename}} /
 RUN apt-get update; \
     apt-get -y install unzip && \
-    unzip {{packer_pkg_url | basename}}
+    unzip {{packer_info.pkg_url | basename}}
 CMD ["./packer", "build", "-on-error=abort", "{{os_id}}/packer.json"]
 
 {%  else %}
@@ -15,8 +15,8 @@ CMD ["./packer", "build", "-on-error=abort", "{{os_id}}/packer.json"]
 COPY {{os_id}}/* /{{os_id}}/
 RUN  apt-get update; apt-get -y install unzip wget \
   && wget {{base_os[os_id].iso_url}} \
-  && wget {{packer_pkg_url}} \
-  && unzip {{packer_pkg_url | basename}}
+  && wget {{packer_info.pkg_url}} \
+  && unzip {{packer_info.pkg_url | basename}}
 
 CMD ["./packer", "build", "-on-error=abort", "{{os_id}}/packer.json"]
 

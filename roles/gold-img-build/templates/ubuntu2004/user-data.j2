@@ -1,6 +1,9 @@
+# -*- coding: utf-8 -*-
 #cloud-config
 autoinstall:
   version: 1
+  refresh-installer:
+    update: yes
   apt:
     geoip: true
   keyboard: {layout: gb, toggle: 'null', variant: ''}
@@ -9,6 +12,12 @@ autoinstall:
     allow-pw: {{rootinfo.allow_root_pw | tojson}}
     authorized-keys: {{rootinfo.ssh_authorized_keys | tojson}}
     install-server: true
+  network:
+    network:
+      version: 2
+      ethernets:
+        eth0:
+           dhcp4: yes
   storage:
     config:
       - {type: disk, id: disk-sda, ptable: gpt, path: /dev/sda, wipe: superblock-recursive, preserve: false, name: 'root', grub_device: true}
@@ -28,16 +37,40 @@ autoinstall:
 {% endif %}
 
   user-data:
+    disable_root: false
+    power_state: {mode: poweroff}
+    users: {{userinfo | tojson}}
+    write_files:
+      - content: |
+          [Unit]
+          Description=Gold-image pre-shutdown activities
+          Requires=network-online.target network.target dbus.service nss-lookup.target
+          After=network-online.target network.target dbus.service nss-lookup.target
+
+          [Service]
+          Type=oneshot
+          RemainAfterExit=yes
+          ExecStart=/bin/true
+          ExecStop=/bin/bash -c 'until cloud-init status 2>&1 | grep done; do sleep 0.1; done; /usr/bin/cloud-init clean'
+          TimeoutStopSec=30
+          KillMode=none
+
+          [Install]
+          WantedBy=multi-user.target
+        owner: root:root
+        permissions: '0644'
+        path: /etc/systemd/system/goldbuildfinish.service
     runcmd:
-        ## Set a background task to wait for cloud-init to finish and then run cloud-init clean.  Allows cloud-init to run again (with a different datasource) when cloning VM.
-      - /bin/bash -c "until cloud-init status 2>&1 | grep done; do sleep 0.01; done; /usr/bin/cloud-init clean" &               #TESTING: /bin/bash -c 'until nc -4 -z -v localhost 8081 2>&1 | grep succeeded ; do sleep 1; done; echo hurrah'
-        ## Install the cloud-init-vmware-guestinfo cloud-init datasource for subsequent vmware cloning.  Can't do this in late-command, because a restart happens after that, and we end up in this rncmd block, still running the initial autoinstall nocloud datasource.
+      - /bin/systemctl systemctl daemon-reload
+      - /bin/systemctl start goldbuildfinish.service
+{#        ## Set a background task to wait for cloud-init to finish and then run cloud-init clean.  Allows cloud-init to run again (with a different datasource) when cloning VM.  -  NOT RELIABLE, race condition.#}
+{#      - /bin/bash -c "until cloud-init status 2>&1 | grep done; do sleep 0.01; done; /usr/bin/cloud-init clean" &               #TESTING: /bin/bash -c 'until nc -4 -z -v localhost 8081 2>&1 | grep succeeded ; do sleep 1; done; echo hurrah'#}
+        ## Allow future cloud configs to configure the network
+      - /bin/rm -f /etc/cloud/cloud.cfg.d/subiquity-disable-cloudinit-networking.cfg
+        ## Install the cloud-init-vmware-guestinfo cloud-init datasource for subsequent vmware cloning.  Can't do this in late-command, because a restart happens after that, and we end up in this runcmd block, still running the initial autoinstall nocloud datasource.
       - /usr/bin/curl -sSL https://raw.githubusercontent.com/vmware/cloud-init-vmware-guestinfo/master/install.sh | sh -
         ## Reset the machine-id to 0 so it is regenerated at next startup (when it is cloned). This is the default dhcp unique identifier, as well as defining systemd's "ConditionFirstBoot"
       - truncate -s0 /etc/machine-id
-    disable_root: false
-    power_state: {mode: poweroff}
-    users: [{% for user in userinfo %}{{user | tojson}}{% if not loop.last %},{% endif %}{% endfor %}]
 
   packages:
     - open-vm-tools
@@ -50,20 +83,21 @@ autoinstall:
 
   late-commands:
       ## Set the admin group to sudo without password
-    - TARGET_MOUNT_POINT=/target curtin in-target -- sed -i '/%admin/s/ALL$/NOPASSWD:ALL/' /etc/sudoers
+    - curtin in-target -- sed -i '/%admin/s/ALL$/NOPASSWD:ALL/' /etc/sudoers
       ## Force the original eth[n] naming convention, so we get predictable interface name for subsequent VM provisioning tooling.
-    - TARGET_MOUNT_POINT=/target curtin in-target -- sed -ri 's/^(GRUB_CMDLINE_LINUX\s*=\s*)"(.*?)"$/\1"\2 net.ifnames=0 biosdevname=0"/' /etc/default/grub
-    - TARGET_MOUNT_POINT=/target curtin in-target -- /usr/sbin/grub-mkconfig -o /boot/grub/grub.cfg
+    - curtin in-target -- sed -ri 's/^(GRUB_CMDLINE_LINUX\s*=\s*)"(.*?)"$/\1"\2 net.ifnames=0 biosdevname=0"/' /etc/default/grub
+    - curtin in-target -- /usr/sbin/grub-mkconfig -o /boot/grub/grub.cfg
 {% if rootinfo.passwd is defined and rootinfo.passwd != "" %}
       ## Set the root password
-    - TARGET_MOUNT_POINT=/target curtin in-target -- sed -i 's|^root:[^:]*\(:.*\)$|root:{{rootinfo.passwd}}\1|' /etc/shadow     ## chpasswd -e <<< 'root:{{rootinfo.passwd}}' -- doesn't work due to redirection
+    - curtin in-target -- sed -i 's|^root:[^:]*\(:.*\)$|root:{{rootinfo.passwd}}\1|' /etc/shadow     ## chpasswd -e <<< 'root:{{rootinfo.passwd}}' -- doesn't work due to redirection
 {% endif  %}
       ## Force primary NIC to be at the top of the output from 'open-vm-tools guestinfo list' (for future Ansible playbooks)
-    - TARGET_MOUNT_POINT=/target curtin in-target -- echo "\n[guestinfo]\nprimary-nics=e*\nlow-priority-nics=vlan*\n" >> /etc/vmware-tools/tools.conf
+    - curtin in-target -- echo "\n[guestinfo]\nprimary-nics=e*\nlow-priority-nics=vlan*\n" >> /etc/vmware-tools/tools.conf
       ## Set open-vm-tools polling interval to 7s so we get the IP address back faster (default 30s)
-    - TARGET_MOUNT_POINT=/target curtin in-target -- echo "poll-interval=7\n" >> /etc/vmware-tools/tools.conf
-    - TARGET_MOUNT_POINT=/target curtin in-target -- /usr/bin/apt-get update
-    - TARGET_MOUNT_POINT=/target curtin in-target -- /usr/bin/apt-get -y dist-upgrade
-    - TARGET_MOUNT_POINT=/target curtin in-target -- /usr/bin/apt-get --purge -y autoremove
-    - TARGET_MOUNT_POINT=/target curtin in-target -- /bin/rm -rf /var/cache/apt/*
-    - TARGET_MOUNT_POINT=/target curtin in-target -- /bin/rm -rf /var/lib/apt/lists/*
+    - curtin in-target -- echo "poll-interval=7\n" >> /etc/vmware-tools/tools.conf
+    - curtin in-target -- /usr/bin/apt-get update
+    - curtin in-target -- /usr/bin/apt-get -y dist-upgrade
+    - curtin in-target -- /usr/bin/apt-get --purge -y autoremove
+    - curtin in-target -- /bin/rm -rf /var/cache/apt/*
+    - curtin in-target -- /bin/rm -rf /var/lib/apt/lists/*
+    - curtin in-target -- sed -ri 's/^#(LogLevel\s*=\s*).*?/\1debug/' /etc/systemd/system.conf
