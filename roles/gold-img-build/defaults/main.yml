@@ -16,7 +16,7 @@ base_os:
     type: "ubuntu-64"
   ubuntu2004:
     name: "ubuntu2004"
-    iso_url: "http://cdimage.ubuntu.com/releases/20.04/release/ubuntu-20.04-live-server-amd64.iso"
+    iso_url: "https://releases.ubuntu.com/20.04.1/ubuntu-20.04.1-live-server-amd64.iso"
     iso_checksum: ""
     iso_checksum_type: "none"
     type: "ubuntu-64"
