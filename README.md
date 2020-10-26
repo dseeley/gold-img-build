@@ -1,6 +1,12 @@
 # gold-img-build-esxi
-Builds 'golden' esxi image from base iso + yum/apt updates 
+Builds a 'gold' esxi server image (currently Ubuntu only) from the base server iso, applies package updates and sets custom network config, using [packer](https://www.packer.io/) (and the `vmware-iso` builder).
 
+Optionally runs within a docker container, and automatically pulls the server images.
+
+Several configurations are provided (in `roles/gold-img-build/templates`):
++ **ubuntu2004**:  Uses the new [autoinstall](https://ubuntu.com/server/docs/install/autoinstall-reference) mechanism
++ **ubuntu2004_legacy**:  Uses the legacy preseeding technology.
++ **ubuntu1804**:  Uses the legacy preseeding technology.
 
 ## Prerequisites
 
@@ -9,7 +15,7 @@ Builds 'golden' esxi image from base iso + yum/apt updates
   + Inside the web UI, navigate to “Manage”, then the “Services” tab. Find the entry called: “TSM-SSH”, and enable it.
 + Enable “Guest IP Hack”
   + `esxcli system settings advanced set -o /Net/GuestIPHack -i 1`
-+ Open VNC Ports on the Firewall
++ Open VNC Ports on the ESXi firewall (_only necessary if using esxi < 6.7 and packer < 1.6.4 and not defining `vnc_over_websocket`_)
     ```
     Packer connects to the VM using VNC, so we’ll open a range of ports to allow it to connect to it.
     
@@ -33,7 +39,7 @@ Builds 'golden' esxi image from base iso + yum/apt updates
     </ConfigRoot>
     EOFVNC
  
-    Update the permissions and reload the firewall:
+    # Update the permissions and reload the firewall:
     
     chmod 444 /etc/vmware/firewall/vnc.xml
     esxcli network firewall refresh
@@ -58,18 +64,19 @@ Builds 'golden' esxi image from base iso + yum/apt updates
 
 
 ### Ansible Vault Secrets
-Credentials are encrypted inline in the playbooks using ansible-vault.  
+Credentials can be encrypted inline in the playbooks using ansible-vault.  They are exposed to ansible via the `vault_password_file` [script mechanism](https://docs.ansible.com/ansible/latest/user_guide/playbooks_vault.html#vault-password-client-scripts) (defined to point to `.vaultpass-client.py` in the `ansible.cfg` file), which returns the vault password referenced `VAULT_PASSWORD` environment variable.
 ```
 export VAULT_PASSWORD=<password>
 ```
 
 ## Invocation
 ```
-ansible-playbook gold-img-build.yml -e os_id=[ubuntu1804|ubuntu2004]
+ansible-playbook gold-img-build.yml -e os_id=ubuntu2004
+ansible-playbook gold-img-build.yml -e os_id=ubuntu2004 -e copylocal=true -e skip_docker=true
 ```
 
 ### Mandatory command-line variables:
-+ `-e os_id=<ubuntu1804>` - an entry under base_os in `defaults/main.yml`
++ `-e os_id=<ubuntu2004>` - an entry under base_os in `defaults/main.yml`
 
 ### Optional extra variables:
 + `-e copylocal=true` - Copies the Ubuntu base image and Packer executable from the local Ansible directory, rather than downloading them _(default: false)_.  

@@ -11,25 +11,22 @@ base_os:
   ubuntu1804:
     name: "ubuntu1804"
     iso_url: "http://cdimage.ubuntu.com/releases/18.04.4/release/ubuntu-18.04.4-server-amd64.iso"
-    iso_checksum: "e2ecdace33c939527cbc9e8d23576381c493b071107207d2040af72595f8990b"     # http://cdimage.ubuntu.com/releases/18.04.4/release/SHA256SUMS
-    iso_checksum_type: "sha256"
+    iso_checksum: "sha256:e2ecdace33c939527cbc9e8d23576381c493b071107207d2040af72595f8990b"     # http://cdimage.ubuntu.com/releases/18.04.4/release/SHA256SUMS
     type: "ubuntu-64"
   ubuntu2004:
     name: "ubuntu2004"
     iso_url: "https://releases.ubuntu.com/20.04.1/ubuntu-20.04.1-live-server-amd64.iso"
-    iso_checksum: ""
-    iso_checksum_type: "none"
+    iso_checksum: "none"
     type: "ubuntu-64"
   ubuntu2004_legacy:
     name: "ubuntu2004l"
-    iso_url: "http://cdimage.ubuntu.com/cdimage/ubuntu-legacy-server/releases/20.04/release/ubuntu-20.04-legacy-server-amd64.iso"
-    iso_checksum: ""
-    iso_checksum_type: "none"
+    iso_url: "http://cdimage.ubuntu.com/cdimage/ubuntu-legacy-server/releases/20.04/release/ubuntu-20.04.1-legacy-server-amd64.iso"
+    iso_checksum: "none"
     type: "ubuntu-64"
 
 
 packer_info:
-  pkg_url: "https://releases.hashicorp.com/packer/1.5.6/packer_1.5.6_linux_amd64.zip"
+  pkg_url: "https://releases.hashicorp.com/packer/1.6.4/packer_1.6.4_linux_amd64.zip"
   img_name: "gold-{{base_os[os_id].name}}-{{ lookup('pipe','date +%Y%m%d%H%M%S') }}"
   disk_size: "16384"
   hw_version: 15

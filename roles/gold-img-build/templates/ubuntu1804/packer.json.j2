@@ -27,8 +27,8 @@
       "format": "vmx",
       "guest_os_type": "{{base_os[os_id].type}}",
       "headless": true,
-      "iso_checksum": "{{base_os[os_id].iso_checksum | default("''")}}",
-      "iso_checksum_type": "{{base_os[os_id].iso_checksum_type}}",
+      "insecure_connection": true,
+      "iso_checksum": "{{base_os[os_id].iso_checksum | default("none")}}",
       "iso_url": "{{base_os[os_id].iso_url | basename}}",
       "keep_registered": true,
       "remote_datastore" : "{{esxi.datastore}}",
@@ -39,6 +39,7 @@
       "shutdown_command": "sudo shutdown -h now",
       "skip_compaction": true,
       "skip_export": true,
+      "skip_validate_credentials": true,
       "ssh_username": "shutdown",
       "ssh_password": "{{shutdown_password}}",
 {#      "ssh_private_key_file": "./id_rsa_shutdown",#}
@@ -52,6 +53,7 @@
         "ethernet0.addressType": "static",
         "ethernet0.CheckMACAddress": false,
         {% endif -%}
+        "disk.EnableUUID": true,
         "ethernet0.networkName": "{{packer_info.vmx_data.ethernet0_networkName}}",
         "ethernet0.present": true,
         "ethernet0.uptCompatibility": true,
@@ -60,7 +62,8 @@
         "numvcpus": "{{packer_info.vmx_data.numvcpus}}",
         "vhv.enable": true
       },
-      "vnc_disable_password": true
+      "vnc_disable_password": true,
+      "vnc_over_websocket": true
     }
   ]
 }
