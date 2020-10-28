@@ -29,7 +29,7 @@ packer_info:
   pkg_url: "https://releases.hashicorp.com/packer/1.6.4/packer_1.6.4_linux_amd64.zip"
   img_name: "gold-{{base_os[os_id].name}}-{{ lookup('pipe','date +%Y%m%d%H%M%S') }}"
   disk_size: "16384"
-  hw_version: 15
+  hw_version: 18
   vmx_data:
     memsize: "2048"
     numvcpus: "2"
