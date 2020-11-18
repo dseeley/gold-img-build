@@ -15,7 +15,7 @@ Several configurations are provided (in `roles/gold-img-build/templates`):
   + Inside the web UI, navigate to “Manage”, then the “Services” tab. Find the entry called: “TSM-SSH”, and enable it.
 + Enable “Guest IP Hack”
   + `esxcli system settings advanced set -o /Net/GuestIPHack -i 1`
-+ Open VNC Ports on the ESXi firewall (_only necessary if using esxi < 6.7 and packer < 1.6.4 and not defining `vnc_over_websocket`_)
++ Open VNC Ports on the ESXi firewall (**_only necessary if using esxi < 6.7 and packer < 1.6.4 and not defining `vnc_over_websocket`_**)
     ```
     Packer connects to the VM using VNC, so we’ll open a range of ports to allow it to connect to it.
     
@@ -64,7 +64,7 @@ Several configurations are provided (in `roles/gold-img-build/templates`):
 
 
 ### Ansible Vault Secrets
-Credentials can be encrypted inline in the playbooks using ansible-vault.  They are exposed to ansible via the `vault_password_file` [script mechanism](https://docs.ansible.com/ansible/latest/user_guide/playbooks_vault.html#vault-password-client-scripts) (defined to point to `.vaultpass-client.py` in the `ansible.cfg` file), which returns the vault password referenced `VAULT_PASSWORD` environment variable.
+Credentials can be encrypted inline in the playbooks using ansible-vault.  They are exposed to ansible via the `vault_password_file` [script mechanism](https://docs.ansible.com/ansible/latest/user_guide/vault.html#storing-passwords-in-third-party-tools-with-vault-password-client-scripts) (defined to point to `.vaultpass-client.py` in the `ansible.cfg` file), which returns the vault password referenced `VAULT_PASSWORD` environment variable.
 ```
 export VAULT_PASSWORD=<password>
 ```
