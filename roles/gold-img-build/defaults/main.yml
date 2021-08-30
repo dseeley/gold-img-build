@@ -18,7 +18,7 @@ base_os:
     type: "ubuntu-64"
   ubuntu2004:
     name: "ubuntu2004"
-    iso_url: "https://releases.ubuntu.com/20.04.2/ubuntu-20.04.2-live-server-amd64.iso"
+    iso_url: "https://releases.ubuntu.com/20.04/ubuntu-20.04.3-live-server-amd64.iso"
     iso_checksum: "none"
     type: "ubuntu-64"
   ubuntu2004_legacy:
@@ -29,7 +29,7 @@ base_os:
 
 
 packer_info:
-  pkg_url: "https://releases.hashicorp.com/packer/1.6.6/packer_1.6.6_linux_amd64.zip"
+  pkg_url: "https://releases.hashicorp.com/packer/1.7.4/packer_1.7.4_linux_amd64.zip"
   img_name: "gold-{{base_os[os_id].name}}-{{ lookup('pipe','date +%Y%m%d%H%M%S') }}"
   disk_size: "16384"
   hw_version: 19
