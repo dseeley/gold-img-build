@@ -21,19 +21,19 @@ autoinstall:
     config:
       - {type: disk, id: disk-sda, ptable: gpt, path: /dev/sda, wipe: superblock-recursive, preserve: false, name: 'root', grub_device: true}
       - {type: partition, number: 1, id: partition-boot, device: disk-sda, size: 1048576, flag: bios_grub, preserve: false}
-{% if swap_partition_size is not defined or swap_partition_size|int == 0 %}
+{% if swap.file_or_partition == 'file' or swap.size|int == 0 %}
       - {type: partition, number: 2, id: partition-root, device: disk-sda, size: {{(packer_info.disk_size|int - 3 - 1) * 1024 * 1024}}, wipe: superblock, flag: '', preserve: false}
       - {type: format, id: format-root, fstype: ext4, volume: partition-root, preserve: false}
       - {type: mount, id: mount-0, device: format-root, path: /}
 {% else %}
-      - {type: partition, number: 2, id: partition-swap, device: disk-sda, size: {{(swap_partition_size|int) * 1024 * 1024}}, wipe: superblock, flag: swap, preserve: false}
-      - {type: partition, number: 3, id: partition-root, device: disk-sda, size: {{(packer_info.disk_size|int - 3 - 1 - swap_partition_size|int) * 1024 * 1024}}, wipe: superblock, flag: '', preserve: false}
+      - {type: partition, number: 2, id: partition-swap, device: disk-sda, size: {{(swap.size|int) * 1024 * 1024}}, wipe: superblock, flag: swap, preserve: false}
+      - {type: partition, number: 3, id: partition-root, device: disk-sda, size: {{(packer_info.disk_size|int - 3 - 1 - swap.size|int) * 1024 * 1024}}, wipe: superblock, flag: '', preserve: false}
       - {type: format, id: format-swap, fstype: swap, volume: partition-swap, preserve: false}
       - {type: format, id: format-root, fstype: ext4, volume: partition-root, preserve: false}
       - {type: mount, id: mount-0, device: format-swap, path: ''}
       - {type: mount, id: mount-0, device: format-root, path: /}
-    swap: {swap: 0}
 {% endif %}
+    swap: {size: {{ swap.size|int }}}
 
   user-data:
     disable_root: false

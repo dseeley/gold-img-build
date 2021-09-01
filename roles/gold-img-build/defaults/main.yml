@@ -39,8 +39,10 @@ packer_info:
     ethernet0_networkName: "VM Network"
 #    ethernet0_macAddress: "00:0c:29:f2:dc:da"
 
-## Swap partition size.  If set to 0 or unset, swap partition will not be created.
-swap_partition_size: 0        # "{{packer_info.vmx_data.memsize|int}}"
+## Swap size (file or partition).  If size is 0, swap will not be created.
+swap:
+  size: 0
+  file_or_partition: "partition"
 
 userinfo:
   - name: ansible
