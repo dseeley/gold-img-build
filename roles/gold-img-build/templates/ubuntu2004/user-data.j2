@@ -42,7 +42,7 @@ autoinstall:
     write_files:
       - content: |
           [Unit]
-          Description=Gold-image pre-shutdown activities
+          Description=Gold-image pre-shutdown activities.  clean cloud-init, empty journal, remove self
           Requires=network-online.target network.target dbus.service nss-lookup.target
           After=network-online.target network.target dbus.service nss-lookup.target
 
@@ -50,7 +50,7 @@ autoinstall:
           Type=oneshot
           RemainAfterExit=yes
           ExecStart=/bin/true
-          ExecStop=/bin/bash -c 'until cloud-init status 2>&1 | grep done; do sleep 0.1; done; /usr/bin/cloud-init clean'
+          ExecStop=/bin/bash -c 'until cloud-init status 2>&1 | grep done; do sleep 0.1; done; /usr/bin/cloud-init clean; rm -rf /var/log/journal/*; rm -rf /etc/systemd/system/goldbuildfinish.service'
           TimeoutStopSec=30
           KillMode=none
 
@@ -68,7 +68,16 @@ autoinstall:
       - /bin/rm -f /etc/cloud/cloud.cfg.d/subiquity-disable-cloudinit-networking.cfg /etc/cloud/cloud.cfg.d/99-installer.cfg
         ## Install the cloud-init-vmware-guestinfo cloud-init datasource for subsequent vmware cloning.  Can't do this in late-command, because a restart happens after that, and we end up in this runcmd block, still running the initial autoinstall nocloud datasource.
       - /usr/bin/curl -sSL https://raw.githubusercontent.com/vmware/cloud-init-vmware-guestinfo/master/install.sh | sh -
-        ## Reset the machine-id to 0 so it is regenerated at next startup (when it is cloned). This is the default dhcp unique identifier, as well as defining systemd's "ConditionFirstBoot"
+{% if image_config.remove_snapd is defined and image_config.remove_snapd %}
+      - /usr/bin/apt-get -y purge snapd
+      - /usr/bin/rm -rf ~/snap /snap /var/snap /var/lib/snapd
+{% endif  %}
+      - /usr/bin/apt-get -y --purge autoremove
+      - /usr/bin/apt-get -y autoclean
+      - /bin/rm -rf /var/cache/apt/* /var/lib/apt/lists/*
+      ## Create a file filled with zeroes to occupy the non-zeroed, but deleted free space, so that a 'vmkfstools --punchzero disk.vmdk' (or in packer, where '"skip_compaction": false' is set) can shrink the disk to fit.
+      - dd if=/dev/zero of=zero bs=256M; rm zero
+      ## Reset the machine-id to 0 so it is regenerated at next startup (when it is cloned). This is the default dhcp unique identifier, as well as defining systemd's "ConditionFirstBoot"
       - truncate -s0 /etc/machine-id
 
   packages:
@@ -81,22 +90,21 @@ autoinstall:
     - /usr/sbin/iptables -A INPUT -p tcp --destination-port 22 -j DROP
 
   late-commands:
-      ## Set the admin group to sudo without password
+    ## Set the admin group to sudo without password
     - curtin in-target -- sed -i '/%admin/s/ALL$/NOPASSWD:ALL/' /etc/sudoers
-      ## Force the original eth[n] naming convention, so we get predictable interface name for subsequent VM provisioning tooling.
+    ## Force the original eth[n] naming convention, so we get predictable interface name for subsequent VM provisioning tooling.
     - curtin in-target -- sed -ri 's/^(GRUB_CMDLINE_LINUX\s*=\s*)"(.*?)"$/\1"\2 net.ifnames=0 biosdevname=0"/' /etc/default/grub
+    ## Add a 2s grub timeout, to allow us to get to boot screen if needed.
+    - curtin in-target -- sed -ri 's/^GRUB_TIMEOUT\s*=.*$/GRUB_TIMEOUT=2/' /etc/default/grub
     - curtin in-target -- /usr/sbin/grub-mkconfig -o /boot/grub/grub.cfg
 {% if rootinfo.passwd is defined and rootinfo.passwd != "" %}
-      ## Set the root password
-    - curtin in-target -- sed -i 's|^root:[^:]*\(:.*\)$|root:{{rootinfo.passwd}}\1|' /etc/shadow     ## chpasswd -e <<< 'root:{{rootinfo.passwd}}' -- doesn't work due to redirection
+    ## Set the root password. (note: chpasswd -e <<< 'root:{{rootinfo.passwd}}' -- doesn't work due to redirection)
+    - curtin in-target -- sed -i 's|^root:[^:]*\(:.*\)$|root:{{rootinfo.passwd}}\1|' /etc/shadow
 {% endif  %}
-      ## Force primary NIC to be at the top of the output from 'open-vm-tools guestinfo list' (for future Ansible playbooks)
+    ## Force primary NIC to be at the top of the output from 'open-vm-tools guestinfo list' (for future Ansible playbooks)
     - curtin in-target -- echo "\n[guestinfo]\nprimary-nics=e*\nlow-priority-nics=vlan*\n" >> /etc/vmware-tools/tools.conf
-      ## Set open-vm-tools polling interval to 7s so we get the IP address back faster (default 30s)
+    ## Set open-vm-tools polling interval to 7s so we get the IP address back faster (default 30s)
     - curtin in-target -- echo "poll-interval=7\n" >> /etc/vmware-tools/tools.conf
     - curtin in-target -- /usr/bin/apt-get update
     - curtin in-target -- /usr/bin/apt-get -y dist-upgrade
-    - curtin in-target -- /usr/bin/apt-get --purge -y autoremove
-    - curtin in-target -- /bin/rm -rf /var/cache/apt/*
-    - curtin in-target -- /bin/rm -rf /var/lib/apt/lists/*
     - curtin in-target -- sed -ri 's/^#(LogLevel\s*=\s*).*?/\1debug/' /etc/systemd/system.conf
