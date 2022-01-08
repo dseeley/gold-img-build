@@ -27,7 +27,7 @@ base_os:
 
 
 packer_info:
-  pkg_url: "https://releases.hashicorp.com/packer/1.7.5/packer_1.7.5_linux_amd64.zip"
+  pkg_url: "https://releases.hashicorp.com/packer/1.7.8/packer_1.7.8_linux_amd64.zip"
   img_name: "gold-{{base_os[os_id].name}}-{{ lookup('pipe','date +%Y%m%d%H%M%S') }}"
   disk_size: "16384"
   hw_version: 19
