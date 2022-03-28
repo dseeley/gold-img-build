@@ -2,17 +2,43 @@
 
 - name: Preflight check
   hosts: localhost
-  connection: local
   gather_facts: false
   tasks:
     - assert: { that: "ansible_version.full is version_compare('2.9', '>=')", msg: "Ansible >=2.9 required." }
-    - assert: { that: "os_id is defined and os_id is defined", msg: "Please define os_id (an entry under base_os in defaults/main.yml)" }
+    - assert: { that: "os_id is defined and os_id != ''", msg: "Please define os_id (an entry under base_os in defaults/main.yml)" }
+    - assert: { that: "cloud_type is defined and cloud_type != ''", msg: "Please define cloud_type (an entry under base_os in defaults/main.yml)" }
 
-- name: Create VM
+
+- name: "Create {{cloud_type}} image"
   hosts: localhost
-  connection: local
   gather_facts: false
-  roles:
-    - role: gold-img-build
-  tags: vm_create
+  tasks:
+    - name: Set image_name (must be a 'fact' not a group_vars variable, because the pipe lookup will change per host/group)
+      set_fact:
+        image_name: "gold-{{base_os[os_id].name}}-{{ lookup('pipe','date +%Y%m%d%H%M%S') }}"
 
+    - name: non-libvirt provisioning (localhost)
+      include_role:
+        name: "{{cloud_type}}"
+      when: "cloud_type != 'libvirt'"
+
+    - name: libvirt provisioning happens on the libvirt host (not the localhost)
+      block:
+        - name: Add libvirt host to dynamic inventory
+          add_host:
+            name: "{{ image_config.libvirt.host }}"
+            groups: "libvirt"
+            ansible_host: "{{ image_config.libvirt.host }}"
+            ansible_user: "{{ image_config.libvirt.username }}"
+            ansible_ssh_private_key_file: "{{ image_config.libvirt.private_key | default(None) | ternary('id_rsa_ansible_ssh_private_key_file', omit) }}"
+
+        - name: "Copy libvirt ansible_ssh_private_key_file"
+          copy: { content: "{{image_config.libvirt.private_key}}", dest: 'id_rsa_ansible_ssh_private_key_file', mode: '0600' }
+          no_log: yes
+          when: "image_config.libvirt.private_key is defined"
+
+        - include_role:
+            name: "libvirt"
+            apply:
+              delegate_to: "{{ groups['libvirt'][0] }}"
+      when: "cloud_type == 'libvirt'"

@@ -1,0 +1,5 @@
+---
+
+- name: run common deploy
+  include_role:
+    name: _common

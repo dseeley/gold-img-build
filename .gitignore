@@ -3,3 +3,7 @@
 .idea*
 .DS_Store
 *.pyc
+id_rsa_*
+*.iso
+*.zip
+test*.yml

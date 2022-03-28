@@ -1,0 +1,37 @@
+---
+
+- name: verify host is virt-enabled
+  block:
+    - name: grep -Eoc '(vmx|svm)' /proc/cpuinfo
+      command: grep -Eoc '(vmx|svm)' /proc/cpuinfo
+      register: r__command_cpuinfo
+
+    - assert: { that: "r__command_cpuinfo.stdout != 0", msg: "HW virt is not enabled" }
+
+    - name: kvm-ok
+      command: kvm-ok
+      register: r__command_kvmok
+
+    - assert: { that: "'KVM acceleration can be used' in r__command_kvmok.stdout", msg: "KVM acceleration not enabled" }
+
+
+- name: run common deploy
+  include_role:
+    name: _common
+
+
+- block:
+    - name: move the vm to the storage pool
+      command: "mv {{image_config.libvirt.storage_pool}}/{{image_name}}/{{image_name}} {{image_filepath}}"
+      args: { creates: "{{image_filepath}}" }
+
+    - name: remove the empty build directory
+      command: "rmdir {{image_config.libvirt.storage_pool}}/{{image_name}}/"
+
+    - name: register the VM
+      command: "virt-install --name {{image_name}} --memory 2048 --vcpus 2 --disk {{image_filepath}},bus=virtio --import --graphics vnc --noautoconsole --noreboot --virt-type kvm --os-type=generic --machine q35 --network type=direct,model=virtio,source=br0 {{'--boot uefi' if (image_config.libvirt.firmware is defined  and  'OVMF' in image_config.libvirt.firmware) else '' }}"
+      register: r__command_virt_install
+
+    - debug: msg={{r__command_virt_install}}
+  vars:
+    image_filepath: "{{image_config.libvirt.storage_pool}}/{{image_name}}.{{image_config.libvirt.fileformat}}"

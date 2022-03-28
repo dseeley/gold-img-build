@@ -21,19 +21,23 @@ autoinstall:
     config:
       - {type: disk, id: disk-sda, ptable: gpt, path: /dev/sda, wipe: superblock-recursive, preserve: false, name: 'root', grub_device: true}
       - {type: partition, number: 1, id: partition-boot, device: disk-sda, size: 1048576, flag: bios_grub, preserve: false}
-{% if swap.file_or_partition == 'file' or swap.size|int == 0 %}
-      - {type: partition, number: 2, id: partition-root, device: disk-sda, size: {{(packer_info.disk_size|int - 3 - 1) * 1024 * 1024}}, wipe: superblock, flag: '', preserve: false}
+{% if image_config.swap.file_or_partition == 'file' or image_config.swap.size_mb|int == 0 %}
+{#    layout:#}
+{#      name: direct#}
+      - {type: partition, number: 2, id: partition-root, device: disk-sda, size: {{(image_config.disk_size_mb|int - 3 - 1) * 1024 * 1024}}, wipe: superblock, flag: '', preserve: false}
       - {type: format, id: format-root, fstype: ext4, volume: partition-root, preserve: false}
       - {type: mount, id: mount-0, device: format-root, path: /}
 {% else %}
-      - {type: partition, number: 2, id: partition-swap, device: disk-sda, size: {{(swap.size|int) * 1024 * 1024}}, wipe: superblock, flag: swap, preserve: false}
-      - {type: partition, number: 3, id: partition-root, device: disk-sda, size: {{(packer_info.disk_size|int - 3 - 1 - swap.size|int) * 1024 * 1024}}, wipe: superblock, flag: '', preserve: false}
+      - {type: partition, number: 2, id: partition-swap, device: disk-sda, size: {{(image_config.swap.size_mb|int) * 1024 * 1024}}, wipe: superblock, flag: swap, preserve: false}
+      - {type: partition, number: 3, id: partition-root, device: disk-sda, size: {{(image_config.disk_size_mb|int - 3 - 1 - image_config.swap.size_mb|int) * 1024 * 1024}}, wipe: superblock, flag: '', preserve: false}
       - {type: format, id: format-swap, fstype: swap, volume: partition-swap, preserve: false}
       - {type: format, id: format-root, fstype: ext4, volume: partition-root, preserve: false}
       - {type: mount, id: mount-0, device: format-swap, path: ''}
       - {type: mount, id: mount-0, device: format-root, path: /}
 {% endif %}
-    swap: {size: {{ swap.size|int }}}
+{% if image_config.swapfile_mb is defined and image_config.swapfile_mb|int > 0 > 0 %}
+    swap: {size: {{ image_config.swap.size_mb|int }}}
+{% endif %}
 
   user-data:
     disable_root: false
@@ -107,4 +111,6 @@ autoinstall:
     - curtin in-target -- echo "poll-interval=7\n" >> /etc/vmware-tools/tools.conf
     - curtin in-target -- /usr/bin/apt-get update
     - curtin in-target -- /usr/bin/apt-get -y dist-upgrade
+{% if image_config.systemd_debug is defined and image_config.systemd_debug %}
     - curtin in-target -- sed -ri 's/^#(LogLevel\s*=\s*).*?/\1debug/' /etc/systemd/system.conf
+{% endif  %}

@@ -1,0 +1,48 @@
+{
+  "builders": [
+    {
+      "type": "xenserver-iso",
+      "boot_command": [
+        "<up><wait5><up><wait5>",
+        "c<wait5>",
+        "set gfxpayload=keep<enter><wait5>",
+        "linux /casper/vmlinuz net.ifnames=0 biosdevname=0 modprobe.blacklist=floppy autoinstall ds='nocloud-net;s=http://{% raw %}{{ .HTTPIP }}:{{ .HTTPPort }}{% endraw %}/' ---<enter><wait5>",
+        "initrd /casper/initrd<enter><wait5>",
+        "boot<enter>"
+      ],
+      "boot_key_interval": "25ms",
+      "boot_wait": "5s",
+{#      "clone_template": "{{base_os[os_id].type.xcpng}}",#}
+      "communicator": "none",
+      "disk_size": {{image_config.disk_size_mb}},
+      "firmware": "{{image_config.xcp_ng.firmware}}",
+      "format": "none",
+      "headless": true,
+      "http_directory": "./{{cloud_type}}__{{os_id}}",
+      "insecure_connection": true,
+      "install_timeout ": "15m",
+      "iso_checksum_type": "none",
+      "iso_url": "{{base_os[os_id].iso_url | basename}}",
+      "keep_registered": true,
+      "keep_vm": "always",
+      "network_names": "{{image_config.xcp_ng.network_names}}",
+      "remote_host": "{{image_config.xcp_ng.host}}",
+      "remote_password": "{{image_config.xcp_ng.password}}",
+      "remote_username": "{{image_config.xcp_ng.username}}",
+      "shutdown_command": "#dummy_to_prevent_packer_doing_forcible_poweroff",
+      "shutdown_timeout": "15m",
+      "ssh_username": "root",
+      "skip_compaction": false,
+      "skip_export": true,
+      "skip_validate_credentials": true,
+      "sr_iso_name": "{{image_config.xcp_ng.sr_iso_name}}",
+      "sr_name": "{{image_config.xcp_ng.sr_name}}",
+      "tools_iso_name": "guest-tools.iso",
+      "vm_name": "{{image_name}}",
+      "vm_description": "{{image_name}}",
+      "vm_memory": "{{image_config.memory_mb}}",
+      "platform_args": "{{image_config.xcp_ng.platform_args}}",
+      "vnc_disable_password": true
+    }
+  ]
+}
