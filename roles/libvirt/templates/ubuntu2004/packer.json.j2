@@ -1,0 +1,60 @@
+{
+  "builders": [
+    {
+      "type": "qemu",
+      "accelerator": "kvm",
+{% if image_config.libvirt.firmware is defined  and  'OVMF' in image_config.libvirt.firmware %}
+      "boot_command": [
+        "<up><wait1s><up><wait1s><up><wait1s>",
+        "c<wait1s>",
+        "set gfxpayload=keep<enter><wait1s>",
+        "linux /casper/vmlinuz net.ifnames=0 biosdevname=0 modprobe.blacklist=floppy autoinstall ds='nocloud-net;s=http://{% raw %}{{ .HTTPIP }}:{{ .HTTPPort }}{% endraw %}/' ---<enter><wait1s>",
+        "initrd /casper/initrd<enter><wait1s>",
+        "boot<enter>"
+      ],
+{% else %}
+      "boot_command": [
+        "<rightShift><enter><f6><esc><wait1s><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs>",
+        "/casper/vmlinuz ",
+        "autoinstall ",
+        "initrd=/casper/initrd quiet ",
+        "grub-installer/bootdev=/dev/sda ",
+        "net.ifnames=0 biosdevname=0 ",
+        "ds=nocloud-net;s=http://{% raw %}{{ .HTTPIP }}:{{ .HTTPPort }}{% endraw %}/ ---<enter>"
+      ],
+{% endif %}
+      "boot_key_interval": "25ms",
+      "boot_wait": "3s",
+      "communicator": "none",
+      "cpus": {{image_config.cpus}},
+      "disk_size": {{image_config.disk_size_mb}},
+{% if image_config.libvirt.firmware is defined  and  'OVMF' in image_config.libvirt.firmware %}
+{# Defining the devices (specifically, their boot indexes) manually is necessary to set the boot order to HD-first with the OVMF UEFI bootloader.  See https://discuss.hashicorp.com/t/building-uefi-images-with-qemu-kvm/18061/5 #}
+      "qemuargs": [
+        [ "-drive", "if=pflash,format=raw,readonly,file={{ image_config.libvirt.firmware }}" ],
+        [ "-device", "virtio-blk-pci,drive=drive0,bootindex=0" ],
+        [ "-device", "virtio-blk-pci,drive=cdrom0,bootindex=1" ],
+        [ "-drive",  "if=none,file={{image_config.libvirt.storage_pool}}/{{image_name}}/{{image_name}},id=drive0,cache=writeback,discard=ignore,format={{image_config.libvirt.fileformat}}" ],
+        [ "-drive",  "if=none,file={{base_os[os_id].iso_url | basename}},id=cdrom0,media=cdrom" ]
+      ],
+{% endif %}
+      "format": "{{image_config.libvirt.fileformat}}",
+      "headless": true,
+      "http_directory": "./{{cloud_type}}__{{os_id}}",
+      "iso_checksum": "none",
+      "iso_url": "{{base_os[os_id].iso_url | basename}}",
+      "iso_skip_cache": false,
+      "memory": "{{image_config.memory_mb}}",
+{% if image_config.net_bridge is defined %}
+      "net_bridge": "{{image_config.net_bridge}}",
+{% endif %}
+      "output_directory": "{{image_config.libvirt.storage_pool}}/{{image_name}}",
+      "shutdown_command": "#dummy_to_prevent_packer_doing_forcible_poweroff",
+      "shutdown_timeout": "20m",
+      "ssh_username": "root",
+      "skip_compaction": false,
+      "vm_name": "{{image_name}}",
+      "vnc_bind_address": "0.0.0.0"
+    }
+  ]
+}

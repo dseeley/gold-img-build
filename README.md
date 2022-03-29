@@ -1,7 +1,6 @@
 # gold-img-build
 Builds 'gold' Ubuntu server images for ESXi and Qemu/libvirt from the base server distribution iso, using [packer](https://www.packer.io/) (and the `vmware-iso` and `qemu` builders).
 
-Optionally runs within a docker container, and automatically pulls the server images.
 
 Several configurations are provided (in `roles/<cloud_type>/templates/<os_id>/`):
 + **ubuntu2204**:  Uses the [autoinstall](https://ubuntu.com/server/docs/install/autoinstall-reference) mechanism
@@ -14,8 +13,8 @@ Several configurations are provided (in `roles/<cloud_type>/templates/<os_id>/`)
 ### qemu (libvirt) config:
 + Because there is no easy-to-use way of connecting to a remote libvirt daemon using username/password, we use Ansible to connect to the libvirt server, and run the provisioning directly.
   + Credentials (username/certificate) should be stored in `group_vars/all/all.yml` in the `image_config.libvirt` dict.
-+ Install a vnc viewer.  In Windows WSL2, `gvncviewer` works, but take care not to connect whilst packer is _typing_ as this closes the VNC connection.
-  + You connect to the VNC by `gvncviewer <libvirt_host>:<DISPLAY>`
++ Install a vnc viewer.  In Windows WSL2, `sudo apt install tigervnc-viewer` works well.  (Can also use `gvncviewer`, but take care not to connect whilst packer is _typing_ as this takes ownership of the VNC connection and prevents further typing.)
+  + Connect to the VNC by `xtigervncviewer -Shared=1 <libvirt_host>:<port or display>`
   + The VNC port is opened to the console whist provisioning is in place. The _display_ number is the last two digits of the VNC port number, so if the port number is _5987_ the display number is _87_ 
   + packer.log in the `/tmp/ansible....` directory will also show the VNC connection string as 0.0.0.0:59xx where xx is the display number.
 
@@ -85,8 +84,8 @@ export VAULT_PASSWORD=<password>
 
 ## Invocation
 ```
-ansible-playbook gold-img-build.yml -e cloud_type=esxi -e os_id=ubuntu2004 -e copylocal=true -e skip_docker=true
-ansible-playbook gold-img-build.yml -e cloud_type=libvirt -e os_id=ubuntu2204 -e copylocal=true -e skip_docker=true
+ansible-playbook gold-img-build.yml -e cloud_type=esxi -e os_id=ubuntu2004 -e uselocal=true
+ansible-playbook gold-img-build.yml -e cloud_type=libvirt -e os_id=ubuntu2204 -e uselocal=true
 ```
 
 ### Mandatory command-line variables:
@@ -94,8 +93,8 @@ ansible-playbook gold-img-build.yml -e cloud_type=libvirt -e os_id=ubuntu2204 -e
 + `-e os_id=<ubuntu2004>` - an entry under base_os in `defaults/main.yml`
 
 ### Optional extra variables:
-+ `-e copylocal=true` - Copies the Ubuntu base image and Packer executable from the local Ansible directory, rather than downloading them _(default: false)_.  
-+ `-e skip_docker=true` - Run on localhost rather than within a Docker container _(default: false)_.
++ `-e uselocal=true` - Copies the Ubuntu base image and Packer executable from the local Ansible directory, rather than downloading them. _(default: false)_  
++ `-e use_docker=true` - Run within a Docker container rather than locally. _(default: false)_.
 
 ### Test
 If the script fails, there will be a remnant in a `/tmp/ansible.[hash]` directory.  Enter this directory, and run:

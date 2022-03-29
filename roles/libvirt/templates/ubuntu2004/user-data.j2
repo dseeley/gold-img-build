@@ -22,18 +22,18 @@ autoinstall:
       name: direct
 {#{% if image_config.libvirt.firmware is defined  and  'OVMF' in image_config.libvirt.firmware %}#}
 {#    config:#}
-{#      - {type: disk,      id: disk-sda,    ptable: gpt, path: /dev/sda, wipe: superblock-recursive, preserve: false, name: '', grub_device: false}#}
-{#      - {type: partition, id: partition-0, device: disk-sda, size: (763 * 1024 * 1024), wipe: superblock, flag: boot, number: 1, preserve: false, grub_device: true}#}
+{#      - {type: disk,      id: disk-vda,    ptable: gpt, path: /dev/vda, wipe: superblock-recursive, preserve: false, name: '', grub_device: false}#}
+{#      - {type: partition, id: partition-0, device: disk-vda, size: (763 * 1024 * 1024), wipe: superblock, flag: boot, number: 1, preserve: false, grub_device: true}#}
 {#      - {type: format,    id: format-0,    volume: partition-0, fstype: fat32, preserve: false}#}
 {#      - {type: mount,     id: mount-0,     device: format-0, path: /boot/efi}#}
-{#      - {type: partition, id: partition-1, device: disk-sda, size: (image_config.disk_size_mb|int - 2 - 763) * 1024 * 1024, wipe: superblock, flag: '', number: 2, preserve: false}#}
+{#      - {type: partition, id: partition-1, device: disk-vda, size: (image_config.disk_size_mb|int - 2 - 763) * 1024 * 1024, wipe: superblock, flag: '', number: 2, preserve: false}#}
 {#      - {type: format,    id: format-1,    volume: partition-1, fstype: ext4, preserve: false}#}
 {#      - {type: mount,     id: mount-1,     device: format-1, path: /}#}
 {#{% else %}#}
 {#    config:#}
-{#      - {type: disk,      id: disk-sda,     ptable: gpt, path: /dev/sda, wipe: superblock-recursive, preserve: false, name: '', grub_device: true}#}
-{#      - {type: partition, id: partition-0,  device: disk-sda, number: 1, size: (1 * 1024 * 1024), flag: bios_grub, preserve: false}#}
-{#      - {type: partition, id: partition-1,  device: disk-sda, number: 2, size: {{ (image_config.disk_size_mb|int - 2 - 1) * 1024 * 1024 }}, wipe: superblock, flag: '', preserve: false}#}
+{#      - {type: disk,      id: disk-vda,     ptable: gpt, path: /dev/vda, wipe: superblock-recursive, preserve: false, name: '', grub_device: true}#}
+{#      - {type: partition, id: partition-0,  device: disk-vda, number: 1, size: (1 * 1024 * 1024), flag: bios_grub, preserve: false}#}
+{#      - {type: partition, id: partition-1,  device: disk-vda, number: 2, size: {{ (image_config.disk_size_mb|int - 2 - 1) * 1024 * 1024 }}, wipe: superblock, flag: '', preserve: false}#}
 {#      - {type: format,    id: format-0,     volume: partition-1, fstype: ext4, preserve: false}#}
 {#      - {type: mount,     id: mount-0,      device: format-0, path: /}#}
 {#{% endif %}#}
@@ -72,8 +72,8 @@ autoinstall:
 {#      - /bin/bash -c "until cloud-init status 2>&1 | grep done; do sleep 0.01; done; /usr/bin/cloud-init clean" &               #TESTING: /bin/bash -c 'until nc -4 -z -v localhost 8081 2>&1 | grep succeeded ; do sleep 1; done; echo hurrah'#}
         ## Allow future cloud configs to configure the network
       - /bin/rm -f /etc/cloud/cloud.cfg.d/subiquity-disable-cloudinit-networking.cfg /etc/cloud/cloud.cfg.d/99-installer.cfg
-        ## Install the cloud-init-vmware-guestinfo cloud-init datasource for subsequent vmware cloning.  Can't do this in late-command, because a restart happens after that, and we end up in this runcmd block, still running the initial autoinstall nocloud datasource.
-      - /usr/bin/curl -sSL https://raw.githubusercontent.com/vmware/cloud-init-vmware-guestinfo/master/install.sh | sh -
+        ## Remove all datasources except nocloud
+      - /usr/bin/sed -ri 's/^(datasource_list:).*?/\1 [ NoCloud, None ]/' /etc/cloud/cloud.cfg.d/90_dpkg.cfg
 {% if image_config.remove_snapd is defined and image_config.remove_snapd %}
       - /usr/bin/apt-get -y purge snapd
       - /usr/bin/rm -rf ~/snap /snap /var/snap /var/lib/snapd
@@ -81,13 +81,14 @@ autoinstall:
       - /usr/bin/apt-get -y --purge autoremove
       - /usr/bin/apt-get -y autoclean
       - /bin/rm -rf /var/cache/apt/* /var/lib/apt/lists/*
-      ## Create a file filled with zeroes to occupy the non-zeroed, but deleted free space, so that a 'vmkfstools --punchzero disk.vmdk' (or in packer, where '"skip_compaction": false' is set) can shrink the disk to fit.
+      ## Create a file filled with zeroes to occupy the non-zeroed, but deleted free space, so that a 'qemu-img convert' (in packer, where '"skip_compaction": false' is set) can dedpulicate the zeros and shrink the sparse disk.
       - dd if=/dev/zero of=zero bs=256M; rm zero
       ## Reset the machine-id to 0 so it is regenerated at next startup (when it is cloned). This is the default dhcp unique identifier, as well as defining systemd's "ConditionFirstBoot"
       - truncate -s0 /etc/machine-id
 
   packages:
-    - open-vm-tools
+    - qemu-guest-agent
+    - cloud-guest-utils
     - curl
     - python3-pip
 
@@ -107,10 +108,6 @@ autoinstall:
     ## Set the root password. (note: chpasswd -e <<< 'root:{{rootinfo.passwd}}' -- doesn't work due to redirection)
     - curtin in-target -- sed -i 's|^root:[^:]*\(:.*\)$|root:{{rootinfo.passwd}}\1|' /etc/shadow
 {% endif  %}
-    ## Force primary NIC to be at the top of the output from 'open-vm-tools guestinfo list' (for future Ansible playbooks)
-    - curtin in-target -- echo "\n[guestinfo]\nprimary-nics=e*\nlow-priority-nics=vlan*\n" >> /etc/vmware-tools/tools.conf
-    ## Set open-vm-tools polling interval to 7s so we get the IP address back faster (default 30s)
-    - curtin in-target -- echo "poll-interval=7\n" >> /etc/vmware-tools/tools.conf
     - curtin in-target -- /usr/bin/apt-get update
     - curtin in-target -- /usr/bin/apt-get -y dist-upgrade
 {% if image_config.systemd_debug is defined and image_config.systemd_debug %}

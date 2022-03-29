@@ -18,7 +18,7 @@
 {#      "floppy_dirs": "./{{os_id}}/*",#}
 {#      "floppy_label": "CIDATA",#}
       "format": "vmx",
-      "guest_os_type": "{{base_os[os_id].type.esxi}}",
+      "guest_os_type": "{{'ubuntu-64' if 'ubuntu' in os_id else 'other-64'}}",
       "headless": true,
       "http_directory": "./{{cloud_type}}__{{os_id}}",
       "insecure_connection": true,

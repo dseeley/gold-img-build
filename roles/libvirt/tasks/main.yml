@@ -25,8 +25,13 @@
       command: "mv {{image_config.libvirt.storage_pool}}/{{image_name}}/{{image_name}} {{image_filepath}}"
       args: { creates: "{{image_filepath}}" }
 
+    - name: stat {{image_config.libvirt.storage_pool}}/{{image_name}}
+      stat: path={{image_config.libvirt.storage_pool}}/{{image_name}}/
+      register: r__stat_gcp_storage_pool_image_name
+
     - name: remove the empty build directory
       command: "rmdir {{image_config.libvirt.storage_pool}}/{{image_name}}/"
+      when: r__stat_gcp_storage_pool_image_name.stat.exists|default(False)|bool
 
     - name: register the VM
       command: "virt-install --name {{image_name}} --memory 2048 --vcpus 2 --disk {{image_filepath}},bus=virtio --import --graphics vnc --noautoconsole --noreboot --virt-type kvm --os-type=generic --machine q35 --network type=direct,model=virtio,source=br0 {{'--boot uefi' if (image_config.libvirt.firmware is defined  and  'OVMF' in image_config.libvirt.firmware) else '' }}"

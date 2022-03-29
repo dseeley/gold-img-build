@@ -4,7 +4,7 @@ ENV PACKER_LOG=1
 ENV PACKER_LOG_PATH="./packerlog.txt"
 
 {#Faster version - copies from local instead of downloads.#}
-{% if  copylocal is defined and copylocal %}
+{% if  uselocal is defined and uselocal %}
 
 COPY {{cloud_type}}__{{os_id}}/* /{{cloud_type}}__{{os_id}}/
 COPY {{base_os[os_id].iso_url | basename}} {{packer_pkg_url | basename}} /

@@ -27,7 +27,15 @@
   with_items:
     - "{{packer_pkg_url | basename}}"
     - "{{base_os[os_id].iso_url | basename}}"
-  when: copylocal is defined and copylocal|bool
+  when: uselocal is defined and uselocal|bool
+
+- get_url:
+    url: "{{item}}"
+    dest: "{{ tmp_build_dir.path }}/{{item | basename}}"
+  with_items:
+    - "{{packer_pkg_url}}"
+    - "{{base_os[os_id].iso_url}}"
+  when: uselocal is not defined or uselocal|bool==no
 
 - block:
     - template:
@@ -59,7 +67,7 @@
         name: "{{image_name}}"
         force_absent: yes
         state: absent
-  when: skip_docker is not defined or not skip_docker|bool
+  when: use_docker is defined and use_docker|bool
 
 - name: Packer build (without Docker)
   command: "{{item}}"
@@ -71,7 +79,7 @@
   environment:
     PACKER_LOG: 1
     PACKER_LOG_PATH: "./packerlog.txt"
-  when: skip_docker is defined and skip_docker|bool
+  when: use_docker is not defined or not use_docker|bool
 
 #- name: Remove temporary directory
 #  file:
