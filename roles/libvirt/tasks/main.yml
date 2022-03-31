@@ -34,9 +34,20 @@
       when: r__stat_gcp_storage_pool_image_name.stat.exists|default(False)|bool
 
     - name: register the VM
-      command: "virt-install --name {{image_name}} --memory 2048 --vcpus 2 --disk {{image_filepath}},bus=virtio --import --graphics vnc --noautoconsole --noreboot --virt-type kvm --os-type=generic --machine q35 --network type=direct,model=virtio,source=br0 {{'--boot uefi' if (image_config.libvirt.firmware is defined  and  'OVMF' in image_config.libvirt.firmware) else '' }}"
+      command: "virt-install --name {{image_name}} --memory 2048 --vcpus 2 --disk {{image_filepath}},bus=virtio --import --graphics vnc --noautoconsole --noreboot --virt-type kvm --os-type=generic --machine q35 --network type=direct,model=virtio,source=br0 --channel unix,mode=bind,target_type=virtio,name=org.qemu.guest_agent.0 {{'--boot uefi' if (image_config.libvirt.firmware is defined  and  'OVMF' in image_config.libvirt.firmware) else '' }}"
       register: r__command_virt_install
 
     - debug: msg={{r__command_virt_install}}
   vars:
     image_filepath: "{{image_config.libvirt.storage_pool}}/{{image_name}}.{{image_config.libvirt.fileformat}}"
+
+
+#- block:
+#    - name: check guest_agent response (only valid if guest is running)
+#      command: "{{item}}"
+#      register: r__command__guest_agent
+#      loop:
+#        - "virsh qemu-agent-command {{image_name}} '{\"execute\":\"guest-info\"}'"
+#        - "virsh qemu-agent-command {{image_name}} '{\"execute\":\"guest-network-get-interfaces\"}'"
+#
+#    - debug: msg={{r__command__guest_agent}}

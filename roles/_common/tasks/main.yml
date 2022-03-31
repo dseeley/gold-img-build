@@ -35,7 +35,7 @@
   with_items:
     - "{{packer_pkg_url}}"
     - "{{base_os[os_id].iso_url}}"
-  when: uselocal is not defined or uselocal|bool==no
+  when: uselocal is not defined or uselocal|bool==false
 
 - block:
     - template:
