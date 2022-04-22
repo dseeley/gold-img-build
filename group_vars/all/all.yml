@@ -57,7 +57,7 @@ image_config:
     hw_version: 19
   libvirt:
     host: "192.168.1.75"
-    username: "root"
+    username: "svc"
     private_key: !vault |-
       $ANSIBLE_VAULT;1.1;AES256
       33333333333333333333333333333333333333333333333

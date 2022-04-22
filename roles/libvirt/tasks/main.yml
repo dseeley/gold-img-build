@@ -34,10 +34,43 @@
       when: r__stat_gcp_storage_pool_image_name.stat.exists|default(False)|bool
 
     - name: register the VM
-      command: "virt-install --name {{image_name}} --memory 2048 --vcpus 2 --disk {{image_filepath}},bus=virtio --import --graphics vnc --noautoconsole --noreboot --virt-type kvm --os-type=generic --machine q35 --network type=direct,model=virtio,source=br0 --channel unix,mode=bind,target_type=virtio,name=org.qemu.guest_agent.0 {{'--boot uefi' if (image_config.libvirt.firmware is defined  and  'OVMF' in image_config.libvirt.firmware) else '' }}"
-      register: r__command_virt_install
+      delegate_to: "{{groups['libvirt'][0]}}"
+      become: yes
+      shell: "echo \"<domain type='kvm'>
+        <name>{{image_name}}</name>
+        <memory unit='KiB'>2097152</memory>
+        <vcpu placement='static'>2</vcpu>
+        <os>
+          <type arch='x86_64' machine='pc-q35-4.2'>hvm</type>
+          {% if image_config.libvirt.firmware is defined and 'OVMF' in image_config.libvirt.firmware %}<loader readonly='yes' type='pflash'>/usr/share/OVMF/OVMF_CODE.fd</loader>{% endif %}
+        </os>
+        <features>
+          <acpi/>
+          <apic/>
+        </features>
+        <cpu mode='host-model' check='partial'/>
+        <clock offset='localtime'/>
+        <devices>
+          <emulator>/usr/bin/qemu-system-x86_64</emulator>
+          <disk type='file' device='disk'>
+            <driver name='qemu' type='qcow2'/>
+            <source file='{{image_filepath}}'/>
+            <target dev='vda' bus='virtio'/>
+          </disk>
+          <interface type='direct'>
+            <source dev='br0' mode='vepa'/>
+            <model type='virtio'/>
+          </interface>
+          <channel type='unix'>
+            <target type='virtio' name='org.qemu.guest_agent.0'/>
+            <address type='virtio-serial' controller='0' bus='0' port='1'/>
+          </channel>
+          <graphics type='vnc' autoport='yes'/>
+        </devices>
+        </domain>\" | virsh define /dev/stdin"
+      register: r__command_virsh_define
 
-    - debug: msg={{r__command_virt_install}}
+    - debug: msg={{r__command_virsh_define}}
   vars:
     image_filepath: "{{image_config.libvirt.storage_pool}}/{{image_name}}.{{image_config.libvirt.fileformat}}"
 

@@ -30,10 +30,10 @@
             groups: "libvirt"
             ansible_host: "{{ image_config.libvirt.host }}"
             ansible_user: "{{ image_config.libvirt.username }}"
-            ansible_ssh_private_key_file: "{{ image_config.libvirt.private_key | default(None) | ternary('id_rsa_ansible_ssh_private_key_file', omit) }}"
+            ansible_ssh_private_key_file: "{{ image_config.libvirt.private_key | default(None) | ternary('id_rsa__libvirt_svc', omit) }}"
 
-        - name: "Copy libvirt ansible_ssh_private_key_file"
-          copy: { content: "{{image_config.libvirt.private_key}}", dest: 'id_rsa_ansible_ssh_private_key_file', mode: '0600' }
+        - name: "Copy libvirt ssh private key file"
+          copy: { content: "{{image_config.libvirt.private_key}}", dest: 'id_rsa__libvirt_svc', mode: '0600' }
           no_log: yes
           when: "image_config.libvirt.private_key is defined"
 
