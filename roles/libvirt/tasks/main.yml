@@ -33,6 +33,10 @@
       command: "rmdir {{image_config.libvirt.storage_pool}}/{{image_name}}/"
       when: r__stat_gcp_storage_pool_image_name.stat.exists|default(False)|bool
 
+    - name: Refresh the default storage pool to add the newly-created disk
+      become: yes
+      shell: "virsh pool-refresh --pool default"
+
     - name: register the VM
       delegate_to: "{{groups['libvirt'][0]}}"
       become: yes

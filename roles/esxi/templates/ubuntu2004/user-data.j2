@@ -19,6 +19,10 @@ autoinstall:
            dhcp4: yes
   storage:
     grub: { reorder_uefi: False }
+{% if image_config.swapfile_mb is defined %}
+    ## Note: Setting swap to 0 when using 'layout' (instead of 'config') does not currently work (hence removing swap in late-commands).
+    swap: {size: {{ image_config.swapfile_mb|int }}}
+{% endif %}
     ## Note: The 'storage/layout' syntax will install the OS on the biggest disk it can find.  To install to a different disk, you must use the curtin 'storage/config' syntax, and specify the serial number of that disk explicitly.
     layout: { name: direct }
 {#{% if image_config.libvirt.firmware is defined  and  'OVMF' in image_config.libvirt.firmware %}#}
@@ -38,9 +42,6 @@ autoinstall:
 {#      - {type: format,    id: format-0,     volume: partition-1, fstype: ext4, preserve: false}#}
 {#      - {type: mount,     id: mount-0,      device: format-0, path: /}#}
 {#{% endif %}#}
-{% if image_config.swapfile_mb is defined and image_config.swapfile_mb|int > 0 > 0 %}
-    swap: {size: {{ image_config.swapfile_mb|int }}}
-{% endif %}
 
   user-data:
     disable_root: false
@@ -105,9 +106,20 @@ autoinstall:
     ## Add a grub timeout, to allow us to get to boot screen if needed.
     - curtin in-target -- sed -ri 's/^GRUB_TIMEOUT\s*=.*$/GRUB_TIMEOUT=5/' /etc/default/grub
     - curtin in-target -- /usr/sbin/grub-mkconfig -o /boot/grub/grub.cfg
+    ## Disable the Canonical motd 'news' and the help text
+    - curtin in-target -- sed -i 's/^ENABLED=.*/ENABLED=0/' /etc/default/motd-news
+    - curtin in-target -- chmod -x /etc/update-motd.d/10-help-text
 {% if rootinfo.passwd is defined and rootinfo.passwd != "" %}
     ## Set the root password. (note: chpasswd -e <<< 'root:{{rootinfo.passwd}}' -- doesn't work due to redirection)
     - curtin in-target -- sed -i 's|^root:[^:]*\(:.*\)$|root:{{rootinfo.passwd}}\1|' /etc/shadow
+{% endif  %}
+{% if image_config.systemd_debug is defined and image_config.systemd_debug %}
+    - curtin in-target -- sed -ri 's/^#(LogLevel\s*=\s*).*?/\1debug/' /etc/systemd/system.conf
+{% endif  %}
+{% if image_config.swapfile_mb is defined and image_config.swapfile_mb|int == 0 %}
+    - curtin in-target -- swapoff -a
+    - curtin in-target -- sed -i '/^\/swap.img/d' /etc/fstab
+    - curtin in-target -- rm -f /swap.img
 {% endif  %}
     ## Force primary NIC to be at the top of the output from 'open-vm-tools guestinfo list' (for future Ansible playbooks)
     - curtin in-target -- echo "\n[guestinfo]\nprimary-nics=e*\nlow-priority-nics=vlan*\n" >> /etc/vmware-tools/tools.conf
@@ -118,6 +130,3 @@ autoinstall:
     - curtin in-target -- /usr/bin/apt-get -y dist-upgrade
     - curtin in-target -- /usr/bin/apt-get -y --purge autoremove
     - curtin in-target -- /usr/bin/apt-get -y autoclean
-{% if image_config.systemd_debug is defined and image_config.systemd_debug %}
-    - curtin in-target -- sed -ri 's/^#(LogLevel\s*=\s*).*?/\1debug/' /etc/systemd/system.conf
-{% endif  %}

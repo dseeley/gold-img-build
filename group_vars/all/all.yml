@@ -56,14 +56,14 @@ image_config:
     firmware: "efi"
     hw_version: 19
   libvirt:
-    host: "192.168.1.75"
+    host: "192.168.1.3"
     username: "svc"
     private_key: !vault |-
       $ANSIBLE_VAULT;1.1;AES256
       33333333333333333333333333333333333333333333333
     firmware: "/usr/share/ovmf/OVMF.fd"
     fileformat: "qcow2"
-    storage_pool: "/media/data"
+    storage_pool: "/media/vdisks"
   xcp_ng:
     host: "192.168.1.71"
     username: "root"
