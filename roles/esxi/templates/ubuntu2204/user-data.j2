@@ -8,15 +8,12 @@ autoinstall:
   keyboard: {layout: gb, toggle: 'null', variant: ''}
   locale: en_GB.UTF-8
   ssh:
-    allow-pw: {{rootinfo.allow_root_pw | tojson}}
-    authorized-keys: {{rootinfo.ssh_authorized_keys | tojson}}
     install-server: true
+    ## Note: manage the user-ssh config inside the cloud-init standard user-data section below
   network:
-    network:
-      version: 2
-      ethernets:
-        eth0:
-           dhcp4: yes
+    version: 2
+    ethernets:
+      eth0: { dhcp4: yes }
   storage:
     grub: { reorder_uefi: False }
 {% if image_config.swapfile_mb is defined %}
@@ -47,7 +44,8 @@ autoinstall:
     disable_root: false
     system_info:
       default_user: ~
-    users: {{userinfo | tojson}}
+    ssh_pwauth: true
+    users: {{ userinfo }}
     power_state: { mode: poweroff }
     write_files:
       - content: |
@@ -74,7 +72,7 @@ autoinstall:
       - /bin/systemctl start goldbuildfinish.service
 {#      ## Set a background task to wait for cloud-init to finish and then run cloud-init clean.  Allows cloud-init to run again (with a different datasource) when cloning VM.  -  NOT RELIABLE, race condition.#}
 {#      - /bin/bash -c "until cloud-init status 2>&1 | grep done; do sleep 0.01; done; /usr/bin/cloud-init clean" &               #TESTING: /bin/bash -c 'until nc -4 -z -v localhost 8081 2>&1 | grep succeeded ; do sleep 1; done; echo hurrah'#}
-      ## Allow future cloud configs to configure the network
+      ## Allow future cloud configs to configure the machine
       - /bin/rm -f /etc/cloud/cloud.cfg.d/subiquity-disable-cloudinit-networking.cfg /etc/cloud/cloud.cfg.d/99-installer.cfg
       ## Install the cloud-init-vmware-guestinfo cloud-init datasource for subsequent vmware cloning.  Can't do this in late-command, because a restart happens after that, and we end up in this runcmd block, still running the initial autoinstall nocloud datasource.
       - /usr/bin/curl -sSL https://raw.githubusercontent.com/vmware/cloud-init-vmware-guestinfo/master/install.sh | sh -
@@ -98,9 +96,6 @@ autoinstall:
     - /usr/sbin/iptables -A INPUT -p tcp --destination-port 22 -j DROP
 
   late-commands:
-    ## Set the admin group to sudo without password
-    - curtin in-target -- /usr/sbin/groupadd admin
-    - curtin in-target -- sed -i '/%admin/s/ALL$/NOPASSWD:ALL/' /etc/sudoers
     ## Force the original eth[n] naming convention, so we get predictable interface name for subsequent VM provisioning tooling.
     - curtin in-target -- sed -ri 's/^(GRUB_CMDLINE_LINUX\s*=\s*)"(.*?)"$/\1"\2 net.ifnames=0 biosdevname=0"/' /etc/default/grub
     ## Add a grub timeout, to allow us to get to boot screen if needed.
@@ -109,10 +104,6 @@ autoinstall:
     ## Disable the Canonical motd 'news' and the help text
     - curtin in-target -- sed -i 's/^ENABLED=.*/ENABLED=0/' /etc/default/motd-news
     - curtin in-target -- chmod -x /etc/update-motd.d/10-help-text
-{% if rootinfo.passwd is defined and rootinfo.passwd != "" %}
-    ## Set the root password. (note: chpasswd -e <<< 'root:{{rootinfo.passwd}}' -- doesn't work due to redirection)
-    - curtin in-target -- sed -i 's|^root:[^:]*\(:.*\)$|root:{{rootinfo.passwd}}\1|' /etc/shadow
-{% endif  %}
 {% if image_config.systemd_debug is defined and image_config.systemd_debug %}
     - curtin in-target -- sed -ri 's/^#(LogLevel\s*=\s*).*?/\1debug/' /etc/systemd/system.conf
 {% endif  %}

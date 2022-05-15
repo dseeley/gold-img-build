@@ -1,5 +1,5 @@
 # gold-img-build
-Builds 'gold' Ubuntu server images for ESXi and Qemu/libvirt from the base server distribution iso, using [packer](https://www.packer.io/) (and the `vmware-iso` and `qemu` builders).
+Builds 'gold' Ubuntu server images for ESXi and libvirt/qemu/kvm from the base server distribution iso, using [packer](https://www.packer.io/) (and the `vmware-iso` and `qemu` builders).
 
 
 Several configurations are provided (in `roles/<cloud_type>/templates/<os_id>/`):
@@ -10,7 +10,7 @@ Several configurations are provided (in `roles/<cloud_type>/templates/<os_id>/`)
 
 ## Prerequisites
 
-### qemu (libvirt) config:
+### libvirt/qemu/kvm config:
 + Because there is no easy-to-use way of connecting to a remote libvirt daemon using username/password, we use Ansible to connect to the libvirt server, and run the provisioning directly.
   + Credentials (username/certificate) should be stored in `group_vars/all/all.yml` in the `image_config.libvirt` dict.
 + Install a vnc viewer.  In Windows WSL2, `sudo apt install tigervnc-viewer` works well.  (Can also use `gvncviewer`, but take care not to connect whilst packer is _typing_ as this takes ownership of the VNC connection and prevents further typing.)

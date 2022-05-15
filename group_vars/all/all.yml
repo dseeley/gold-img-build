@@ -1,19 +1,18 @@
 ---
 
 userinfo:
-  - name: ansible
-    ssh_authorized_keys: ['ssh-rsa AAAA==']
-#    sudo: "ALL=(ALL) NOPASSWD:ALL"
-    groups: "admin"
+  - name: root
     lock_passwd: false
-    shell: /bin/bash
-
-rootinfo:
-  allow_root_pw: true
-  passwd: !vault |
-    $ANSIBLE_VAULT;1.1;AES256
-    33333333333333333333333333333333333333333333333
-  ssh_authorized_keys: ['ssh-rsa AAAA==']
+    hashed_passwd: !vault |
+      $ANSIBLE_VAULT;1.1;AES256
+      33333333333333333333333333333333333333333333333
+    ssh_authorized_keys: ['ssh-rsa 33333333333333333333333333333333333333333333333']
+#  - name: ansible
+#    ssh_authorized_keys: ['ssh-rsa 33333333333333333333333333333333333333333333333']
+##    sudo: "ALL=(ALL) NOPASSWD:ALL"
+#    groups: "admin"
+#    lock_passwd: false
+#    shell: /bin/bash
 
 base_os:
   ubuntu1804:
@@ -30,27 +29,26 @@ base_os:
     iso_checksum: "none"
   ubuntu2204:
     name: "ubuntu2204"
-#    iso_url: "https://releases.ubuntu.com/22.04/ubuntu-22.04-live-server-amd64.iso"
-    iso_url: "https://cdimage.ubuntu.com/ubuntu-server/daily-live/current/jammy-live-server-amd64.iso"
+    iso_url: "https://releases.ubuntu.com/22.04/ubuntu-22.04-live-server-amd64.iso"
     iso_checksum: "none"
 
 
 packer_pkg_url: "https://releases.hashicorp.com/packer/1.8.0/packer_1.8.0_linux_amd64.zip"
 
 image_config:
-  disk_size_mb: "16384"
+  disk_size_mb: "12288"
   memory_mb: "2048"
   cpus: "2"
   swapfile_mb: 0
   remove_snapd: yes
   systemd_debug: no     # Whether to debug systemd
   esxi:
-    host: "192.168.1.3"
-    username: "svc"
+    host: "192.168.1.30"
+    username: "root"
     password: !vault |-
       $ANSIBLE_VAULT;1.1;AES256
       33333333333333333333333333333333333333333333333
-    datastore: "4tb-evo860-ssd"
+    datastore: "vdisks"
     ethernet0_networkName: "VM Network"
     # ethernet0_macAddress: "00:0c:29:f2:dc:da"
     firmware: "efi"

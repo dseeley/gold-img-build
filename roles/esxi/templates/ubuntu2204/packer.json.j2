@@ -51,9 +51,12 @@
 {% if image_config.esxi.firmware is defined and image_config.esxi.firmware == 'efi' %}
         "firmware": "efi",
 {% endif %}
+{% if image_config.esxi.nested is defined and image_config.esxi.nested %}
+        "vhv.enable": true,
+{% endif %}
         "memsize": "{{image_config.memory_mb}}",
-        "numvcpus": "{{image_config.cpus}}",
-        "vhv.enable": true
+        "sched.mem.pin": true,
+        "numvcpus": "{{image_config.cpus}}"
       },
       "vnc_disable_password": true,
       "vnc_over_websocket": true
