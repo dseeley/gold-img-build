@@ -9,8 +9,9 @@ userinfo:
     ssh_authorized_keys: ['ssh-rsa 33333333333333333333333333333333333333333333333']
 #  - name: ansible
 #    ssh_authorized_keys: ['ssh-rsa 33333333333333333333333333333333333333333333333']
-##    sudo: "ALL=(ALL) NOPASSWD:ALL"
+#    sudo: "ALL=(ALL) NOPASSWD:ALL"
 #    groups: "admin"
+#    passwd: "*"
 #    lock_passwd: false
 #    shell: /bin/bash
 
