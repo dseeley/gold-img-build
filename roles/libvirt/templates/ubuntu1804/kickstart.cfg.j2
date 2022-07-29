@@ -54,7 +54,7 @@ clearpart --all --initlabel
 bootloader --location=mbr
 
 #Disk partitioning
-{% if image_config.esxi.firmware is defined  and  'efi' in image_config.esxi.firmware %}
+{% if image_config.libvirt.firmware is defined  and  'OVMF' in image_config.libvirt.firmware %}
 # preseeding partman partition information
 preseed --owner d-i partman-auto/method string regular
 preseed --owner d-i partman-auto/expert_recipe 'string gpt-boot-root :: 512 512 512 fat32 $primary{ $iflabel{ gpt } $iflabel{ gpt } $reusemethod{ } method{ efi } format{ } mountpoint{ /boot/efi } . 4000 100000 -1 ext4 $primary{ } method{ format } format{ } use_filesystem{ } filesystem{ ext4 } mountpoint{ / } .'
@@ -86,7 +86,8 @@ poweroff
 %packages
 efibootmgr
 openssh-server
-open-vm-tools
+qemu-guest-agent
+cloud-guest-utils
 cloud-init
 curl
 python3-pip
@@ -96,11 +97,6 @@ python3-pip
 ## Force the original eth[n] naming convention
 sed -ri 's/^(GRUB_CMDLINE_LINUX\s*=\s*)"(.*?)"$/\1"\2 net.ifnames=0 biosdevname=0"/' /etc/default/grub
 grub-mkconfig -o /boot/grub/grub.cfg
-
-## Force primary NIC to be at the top of the output from 'open-vm-tools guestinfo list' (for future Ansible playbooks)
-echo "\n[guestinfo]\nprimary-nics=e*\nlow-priority-nics=vlan*\n" >> /etc/vmware-tools/tools.conf
-## Set open-vm-tools polling interval to 7s so we get the IP address back faster (default 30s)
-echo "poll-interval=7\n" >> /etc/vmware-tools/tools.conf
 
 ## Setup root ssh key
 mkdir -p /root/.ssh
@@ -125,8 +121,6 @@ swapoff -a
 sed -i '/^\/swapfile/d' /etc/fstab
 rm -f /swapfile
 {% endif %}
-
-curl -sSL https://raw.githubusercontent.com/vmware/cloud-init-vmware-guestinfo/master/install.sh | sh -
 
 apt-get update
 apt-get --purge -y remove friendly-recovery ntfs-3g plymouth plymouth-theme-ubuntu-text popularity-contest ufw

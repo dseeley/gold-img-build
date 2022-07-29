@@ -2,6 +2,22 @@
   "builders": [
     {
       "type": "vmware-iso",
+{% if image_config.libvirt.firmware is defined  and  'OVMF' in image_config.libvirt.firmware %}
+      "boot_command": [
+        "<up><wait1s><up><wait1s><up><wait1s>",
+        "c<wait1s>",
+        "set gfxpayload=keep<enter><wait1s>",
+        "linux /install/vmlinuz",
+        " net.ifnames=0 biosdevname=0",
+{#        " ks=http://{% raw %}{{ .HTTPIP }}:{{ .HTTPPort }}{% endraw %}/kickstart.cfg",#}
+        " ks=floppy:/kickstart.cfg",
+        " netcfg/get_hostname={{base_os[os_id].name}}-template ",
+        " debconf/frontend=noninteractive",
+        " ---<enter><wait1s>",
+        "initrd /install/initrd.gz<enter><wait1s>",
+        "boot<enter>"
+      ],
+{% else %}
       "boot_command": [
         "<enter><f6><esc><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs> ",
         "/install/vmlinuz ",
@@ -19,32 +35,32 @@
         "debian-installer/add-kernel-opts string net.ifnames=0 biosdevname=0 ",
         "ks=floppy:/kickstart.cfg ---<enter>"
       ],
+{% endif %}
       "boot_key_interval": "10ms",
       "boot_wait": "5s",
+      "communicator": "none",
       "disk_size": {{image_config.disk_size_mb}},
       "disk_type_id": "thin",
-      "floppy_files": ["{{os_id}}/kickstart.cfg"],
+      "floppy_files": ["{{cloud_type}}__{{os_id}}/kickstart.cfg"],
       "format": "vmx",
       "guest_os_type": "{{'ubuntu-64' if 'ubuntu' in os_id else 'other-64'}}",
       "headless": true,
+      "http_directory": "./{{cloud_type}}__{{os_id}}",
       "insecure_connection": true,
       "iso_checksum": "{{base_os[os_id].iso_checksum | default("none")}}",
       "iso_url": "{{base_os[os_id].iso_url | basename}}",
       "keep_registered": true,
-      "remote_datastore" : "{{image_config.esxi.datastore}}",
+      "remote_datastore": "{{image_config.esxi.datastore}}",
       "remote_host": "{{image_config.esxi.host}}",
       "remote_password": "{{image_config.esxi.password}}",
       "remote_type": "esx5",
       "remote_username": "{{image_config.esxi.username}}",
-      "shutdown_command": "sudo shutdown -h now",
-      "skip_compaction": true,
+      "shutdown_command": "#dummy_to_prevent_packer_doing_forcible_poweroff",
+      "shutdown_timeout": "15m",
+      "skip_compaction": false,
       "skip_export": true,
       "skip_validate_credentials": true,
-      "ssh_username": "shutdown",
-      "ssh_password": "{{shutdown_password}}",
-{#      "ssh_private_key_file": "./id_rsa_shutdown",#}
-      "ssh_port": 22,
-      "ssh_timeout": "10000s",
+      "ssh_username": "root",
       "version": "{{image_config.esxi.hw_version}}",
       "vm_name": "{{image_name}}",
       "vmx_data": {
@@ -58,9 +74,15 @@
         "ethernet0.present": true,
         "ethernet0.uptCompatibility": true,
         "ethernet0.virtualDev": "vmxnet3",
+{% if image_config.esxi.firmware is defined and image_config.esxi.firmware == 'efi' %}
+        "firmware": "efi",
+{% endif %}
+{% if image_config.esxi.nested is defined and image_config.esxi.nested %}
+        "vhv.enable": true,
+{% endif %}
         "memsize": "{{image_config.memory_mb}}",
-        "numvcpus": "{{image_config.cpus}}",
-        "vhv.enable": true
+        "sched.mem.pin": true,
+        "numvcpus": "{{image_config.cpus}}"
       },
       "vnc_disable_password": true,
       "vnc_over_websocket": true

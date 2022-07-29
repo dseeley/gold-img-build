@@ -16,10 +16,10 @@ userinfo:
 #    shell: /bin/bash
 
 base_os:
-  ubuntu1804:
+  ubuntu1804:   #NOTE: Cannot use the 'live-server' version for 18.04, as this only provides subiquity *without* autoinstall
     name: "ubuntu1804"
-    iso_url: "http://cdimage.ubuntu.com/releases/18.04.4/release/ubuntu-18.04.4-server-amd64.iso"
-    iso_checksum: "sha256:e2ecdace33c939527cbc9e8d23576381c493b071107207d2040af72595f8990b"     # http://cdimage.ubuntu.com/releases/18.04.4/release/SHA256SUMS
+    iso_url: "http://cdimage.ubuntu.com/releases/18.04/release/ubuntu-18.04.6-server-amd64.iso"
+    iso_checksum: "none"
   ubuntu2004_legacy:
     name: "ubuntu2004l"
     iso_url: "http://cdimage.ubuntu.com/cdimage/ubuntu-legacy-server/releases/20.04/release/ubuntu-20.04.1-legacy-server-amd64.iso"

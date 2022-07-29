@@ -8,19 +8,33 @@
         "<up><wait1s><up><wait1s><up><wait1s>",
         "c<wait1s>",
         "set gfxpayload=keep<enter><wait1s>",
-        "linux /casper/vmlinuz net.ifnames=0 biosdevname=0 modprobe.blacklist=floppy autoinstall ds='nocloud-net;s=http://{% raw %}{{ .HTTPIP }}:{{ .HTTPPort }}{% endraw %}/' ---<enter><wait1s>",
-        "initrd /casper/initrd<enter><wait1s>",
+        "linux /install/vmlinuz",
+        " net.ifnames=0 biosdevname=0",
+{#        " ks=http://{% raw %}{{ .HTTPIP }}:{{ .HTTPPort }}{% endraw %}/kickstart.cfg",#}
+        " ks=floppy:/kickstart.cfg",
+        " netcfg/get_hostname={{base_os[os_id].name}}-template ",
+        " debconf/frontend=noninteractive",
+        " ---<enter><wait1s>",
+        "initrd /install/initrd.gz<enter><wait1s>",
         "boot<enter>"
       ],
 {% else %}
       "boot_command": [
-        "<rightShift><enter><f6><esc><wait1s><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs>",
-        "/casper/vmlinuz ",
-        "autoinstall ",
-        "initrd=/casper/initrd quiet ",
-        "grub-installer/bootdev=/dev/sda ",
-        "net.ifnames=0 biosdevname=0 ",
-        "ds=nocloud-net;s=http://{% raw %}{{ .HTTPIP }}:{{ .HTTPPort }}{% endraw %}/ ---<enter>"
+        "<enter><f6><esc><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs><bs> ",
+        "/install/vmlinuz ",
+        "auto ",
+        "console-setup/ask_detect=false ",
+        "console-setup/layoutcode=gb ",
+        "console-setup/modelcode=pc105 ",
+        "debconf/frontend=noninteractive ",
+        "debian-installer=en_GB ",
+        "fb=false ",
+        "initrd=/install/initrd.gz ",
+        "locale=en_GB.UTF-8 ",
+        "netcfg/get_hostname={{base_os[os_id].name}}-template ",
+        "grub-installer/bootdev=/dev/vda ",
+        "debian-installer/add-kernel-opts string net.ifnames=0 biosdevname=0 ",
+        "ks=floppy:/kickstart.cfg ---<enter>"
       ],
 {% endif %}
       "boot_key_interval": "25ms",
@@ -28,13 +42,14 @@
       "communicator": "none",
       "cpus": {{image_config.cpus}},
       "disk_size": {{image_config.disk_size_mb}},
+      "floppy_files": ["{{cloud_type}}__{{os_id}}/kickstart.cfg"],
 {% if image_config.libvirt.firmware is defined  and  'OVMF' in image_config.libvirt.firmware %}
 {# Defining the devices (specifically, their boot indexes) manually is necessary to set the boot order to HD-first with the OVMF UEFI bootloader.  See https://discuss.hashicorp.com/t/building-uefi-images-with-qemu-kvm/18061/5 #}
       "qemuargs": [
         [ "-device", "qxl-vga,id=video0,ram_size=67108864,vram_size=67108864,vram64_size_mb=0,vgamem_mb=16,max_outputs=1" ],
         [ "-drive", "if=pflash,format=raw,read-only=on,file={{ image_config.libvirt.firmware }}" ],
         [ "-device", "virtio-blk-pci,drive=drive0,bootindex=0" ],
-        [ "-device", "virtio-blk-pci,drive=cdrom0,bootindex=1" ],
+        [ "-device", "ide-cd,drive=cdrom0,bootindex=1" ],
         [ "-drive",  "if=none,file={{image_config.libvirt.storage_pool}}/{{image_name}}/{{image_name}},id=drive0,cache=writeback,discard=ignore,format={{image_config.libvirt.fileformat}}" ],
         [ "-drive",  "if=none,file={{base_os[os_id].iso_url | basename}},id=cdrom0,media=cdrom" ]
       ],
