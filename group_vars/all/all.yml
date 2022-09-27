@@ -30,7 +30,7 @@ base_os:
     iso_checksum: "none"
   ubuntu2204:
     name: "ubuntu2204"
-    iso_url: "https://releases.ubuntu.com/22.04/ubuntu-22.04-live-server-amd64.iso"
+    iso_url: "https://releases.ubuntu.com/22.04/ubuntu-22.04.1-live-server-amd64.iso"
     iso_checksum: "none"
 
 
