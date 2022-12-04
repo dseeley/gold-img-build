@@ -49,6 +49,11 @@ autoinstall:
     power_state: { mode: poweroff }
     write_files:
       - content: |
+          disable_vmware_customization: false
+        owner: root:root
+        permissions: '0644'
+        path: /etc/cloud/cloud.cfg.d/99-installer.cfg
+      - content: |
           [Unit]
           Description=Gold-image pre-shutdown activities.  clean cloud-init, empty journal, remove self
           Requires=network-online.target network.target dbus.service nss-lookup.target
@@ -74,8 +79,6 @@ autoinstall:
 {#      - /bin/bash -c "until cloud-init status 2>&1 | grep done; do sleep 0.01; done; /usr/bin/cloud-init clean" &               #TESTING: /bin/bash -c 'until nc -4 -z -v localhost 8081 2>&1 | grep succeeded ; do sleep 1; done; echo hurrah'#}
       ## Allow future cloud configs to configure the machine
       - /bin/rm -f /etc/cloud/cloud.cfg.d/subiquity-disable-cloudinit-networking.cfg /etc/cloud/cloud.cfg.d/99-installer.cfg
-      ## Install the cloud-init-vmware-guestinfo cloud-init datasource for subsequent vmware cloning.  Can't do this in late-command, because a restart happens after that, and we end up in this runcmd block, still running the initial autoinstall nocloud datasource.
-      - /usr/bin/curl -sSL https://raw.githubusercontent.com/vmware/cloud-init-vmware-guestinfo/master/install.sh | sh -
 {% if image_config.remove_snapd is defined and image_config.remove_snapd %}
       - /usr/bin/apt-get --purge -y remove snapd
       - /usr/bin/rm -rf ~/snap /snap /var/snap /var/lib/snapd
