@@ -26,15 +26,15 @@ base_os:
     iso_checksum: "none"
   ubuntu2004:
     name: "ubuntu2004"
-    iso_url: "https://releases.ubuntu.com/20.04/ubuntu-20.04.4-live-server-amd64.iso"
+    iso_url: "https://releases.ubuntu.com/20.04/ubuntu-20.04.6-live-server-amd64.iso"
     iso_checksum: "none"
   ubuntu2204:
     name: "ubuntu2204"
-    iso_url: "https://releases.ubuntu.com/22.04/ubuntu-22.04.1-live-server-amd64.iso"
+    iso_url: "https://releases.ubuntu.com/22.04/ubuntu-22.04.3-live-server-amd64.iso"
     iso_checksum: "none"
 
 
-packer_pkg_url: "https://releases.hashicorp.com/packer/1.8.3/packer_1.8.3_linux_amd64.zip"
+packer_pkg_url: "https://releases.hashicorp.com/packer/1.9.2/packer_1.9.2_linux_amd64.zip"
 
 image_config:
   disk_size_mb: "12288"
