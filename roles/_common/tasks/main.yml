@@ -41,6 +41,8 @@
     - template:
         src: "Dockerfile.j2"
         dest: "{{ tmp_build_dir.path }}/Dockerfile"
+      vars:
+        plugin: "{{ 'github.com/hashicorp/qemu' if cloud_type=='libvirt' else 'github.com/hashicorp/vmware' if cloud_type=='esxi' else 'github.com/ddelnano/xenserver' if cloud_type=='xcp_ng' }}"
 
     - name: Packer build Docker image
       docker_image:
@@ -75,13 +77,16 @@
     chdir: "{{ tmp_build_dir.path }}"
   with_items:
     - "unzip {{packer_pkg_url | basename}}"
+    - "./packer plugins install {{plugin}}"
     - "./packer build -on-error=abort ./{{cloud_type}}__{{os_id}}/packer.json"
   environment:
     PACKER_LOG: 1
     PACKER_LOG_PATH: "./packerlog.txt"
+  vars:
+    plugin: "{{ 'github.com/hashicorp/qemu' if cloud_type=='libvirt' else 'github.com/hashicorp/vmware' if cloud_type=='esxi' else 'github.com/ddelnano/xenserver' if cloud_type=='xcp_ng' }}"
   when: use_docker is not defined or not use_docker|bool
 
-#- name: Remove temporary directory
-#  file:
-#    path: "{{ tmp_build_dir.path }}"
-#    state: absent
+- name: Remove temporary directory
+  ansible.builtin.file:
+    path: "{{ tmp_build_dir.path }}"
+    state: absent

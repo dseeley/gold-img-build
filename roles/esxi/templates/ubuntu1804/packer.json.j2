@@ -2,7 +2,7 @@
   "builders": [
     {
       "type": "vmware-iso",
-{% if image_config.libvirt.firmware is defined  and  'OVMF' in image_config.libvirt.firmware %}
+{% if image_config.libvirt.firmware is defined  and  'efi' in image_config.libvirt.firmware %}
       "boot_command": [
         "<up><wait1s><up><wait1s><up><wait1s>",
         "c<wait1s>",

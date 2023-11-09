@@ -54,7 +54,7 @@ clearpart --all --initlabel
 bootloader --location=mbr
 
 #Disk partitioning
-{% if image_config.libvirt.firmware is defined  and  'OVMF' in image_config.libvirt.firmware %}
+{% if image_config.libvirt.firmware is defined  and  'efi' in image_config.libvirt.firmware %}
 # preseeding partman partition information
 preseed --owner d-i partman-auto/method string regular
 preseed --owner d-i partman-auto/expert_recipe 'string gpt-boot-root :: 512 512 512 fat32 $primary{ $iflabel{ gpt } $iflabel{ gpt } $reusemethod{ } method{ efi } format{ } mountpoint{ /boot/efi } . 4000 100000 -1 ext4 $primary{ } method{ format } format{ } use_filesystem{ } filesystem{ ext4 } mountpoint{ / } .'

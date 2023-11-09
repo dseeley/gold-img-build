@@ -1,52 +1,53 @@
 ---
 
-- name: verify host is virt-enabled
+- name: libvirt | verify host is virt-enabled
   block:
-    - name: grep -Eoc '(vmx|svm)' /proc/cpuinfo
+    - name: libvirt | grep -Eoc '(vmx|svm)' /proc/cpuinfo
       command: grep -Eoc '(vmx|svm)' /proc/cpuinfo
       register: r__command_cpuinfo
 
     - assert: { that: "r__command_cpuinfo.stdout != 0", msg: "HW virt is not enabled" }
 
-    - name: kvm-ok
+    - name: libvirt | kvm-ok
       command: kvm-ok
       register: r__command_kvmok
 
     - assert: { that: "'KVM acceleration can be used' in r__command_kvmok.stdout", msg: "KVM acceleration not enabled" }
 
 
-- name: run common deploy
+- name: libvirt | run common deploy
   include_role:
     name: _common
 
 
 - block:
-    - name: move the vm to the storage pool
+    - name: libvirt | move the vm to the storage pool
       command: "mv {{image_config.libvirt.storage_pool}}/{{image_name}}/{{image_name}} {{image_filepath}}"
       args: { creates: "{{image_filepath}}" }
 
-    - name: stat {{image_config.libvirt.storage_pool}}/{{image_name}}
+    - name: libvirt | stat {{image_config.libvirt.storage_pool}}/{{image_name}}
       stat: path={{image_config.libvirt.storage_pool}}/{{image_name}}/
       register: r__stat_gcp_storage_pool_image_name
 
-    - name: remove the empty build directory
-      command: "rmdir {{image_config.libvirt.storage_pool}}/{{image_name}}/"
+    - name: libvirt | remove the build directory
+      ansible.builtin.file:
+        state: absent
+        path: "{{image_config.libvirt.storage_pool}}/{{image_name}}/"
       when: r__stat_gcp_storage_pool_image_name.stat.exists|default(False)|bool
 
-    - name: Refresh the default storage pool to add the newly-created disk
+    - name: libvirt | Refresh the default storage pool to add the newly-created disk
       become: yes
       shell: "virsh pool-refresh --pool default"
 
-    - name: register the VM
+    - name: libvirt | register the VM
       delegate_to: "{{groups['libvirt'][0]}}"
       become: yes
       shell: "echo \"<domain type='kvm'>
         <name>{{image_name}}</name>
         <memory unit='KiB'>2097152</memory>
         <vcpu placement='static'>2</vcpu>
-        <os>
+        <os {% if image_config.libvirt.firmware is defined  and  'efi' in image_config.libvirt.firmware %}firmware='efi'{% endif %}>
           <type arch='x86_64' machine='pc-q35-6.2'>hvm</type>
-          {% if image_config.libvirt.firmware is defined and 'OVMF' in image_config.libvirt.firmware %}<loader readonly='yes' type='pflash'>/usr/share/OVMF/OVMF_CODE.fd</loader>{% endif %}
         </os>
         <features>
           <acpi/>
@@ -57,7 +58,7 @@
         <devices>
           <emulator>/usr/bin/qemu-system-x86_64</emulator>
           <disk type='file' device='disk'>
-            <driver name='qemu' type='qcow2'/>
+            <driver name='qemu' type='qcow2' discard='unmap'/>
             <source file='{{image_filepath}}'/>
             <target dev='vda' bus='virtio'/>
           </disk>
@@ -74,6 +75,10 @@
           </video>
           <graphics type='vnc' autoport='yes'/>
         </devices>
+        <memballoon model='virtio'/>
+        <rng model='virtio'>
+          <backend model='random'>/dev/urandom</backend>
+        </rng>
         </domain>\" | virsh define /dev/stdin"
       register: r__command_virsh_define
 
@@ -83,7 +88,7 @@
 
 
 #- block:
-#    - name: check guest_agent response (only valid if guest is running)
+#    - name: libvirt | check guest_agent response (only valid if guest is running)
 #      command: "{{item}}"
 #      register: r__command__guest_agent
 #      loop:

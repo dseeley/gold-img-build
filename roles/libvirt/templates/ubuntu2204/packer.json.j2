@@ -16,12 +16,12 @@
       "communicator": "none",
       "cpus": {{image_config.cpus}},
       "disk_size": {{image_config.disk_size_mb}},
-{% if image_config.libvirt.firmware is defined  and  'OVMF' in image_config.libvirt.firmware %}
-     {# "firmware": "{{ image_config.libvirt.firmware }}",#}
-      {# These are necessary to set the boot order to HD-first with the OVMF UEFI bootloader.  See https://discuss.hashicorp.com/t/building-uefi-images-with-qemu-kvm/18061/5 #}
+{% if image_config.libvirt.firmware is defined  and  'efi' in image_config.libvirt.firmware %}
+      {# Defining the devices (specifically, their boot indexes) manually is necessary to set the boot order to HD-first with the OVMF UEFI bootloader.  See https://discuss.hashicorp.com/t/building-uefi-images-with-qemu-kvm/18061/5 #}
+      "efi_boot": true,
       "qemuargs": [
         [ "-device", "qxl-vga,id=video0,ram_size=67108864,vram_size=67108864,vram64_size_mb=0,vgamem_mb=16,max_outputs=1" ],
-        [ "-drive", "if=pflash,format=raw,read-only=on,file={{ image_config.libvirt.firmware }}" ],
+        [ "-drive", "if=pflash,format=raw,read-only=on,file=/usr/share/ovmf/OVMF.fd" ],
         [ "-device", "virtio-blk-pci,drive=drive0,bootindex=0" ],
         [ "-device", "virtio-blk-pci,drive=cdrom0,bootindex=1" ],
         [ "-drive",  "if=none,file={{image_config.libvirt.storage_pool}}/{{image_name}}/{{image_name}},id=drive0,cache=writeback,discard=ignore,format={{image_config.libvirt.fileformat}}" ],

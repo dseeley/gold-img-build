@@ -22,7 +22,7 @@ autoinstall:
 {% endif %}
     ## Note: The 'storage/layout' syntax will install the OS on the biggest disk it can find.  To install to a different disk, you must use the curtin 'storage/config' syntax, and specify the serial number of that disk explicitly.
     layout: { name: direct }
-{#{% if image_config.libvirt.firmware is defined  and  'OVMF' in image_config.libvirt.firmware %}#}
+{#{% if image_config.libvirt.firmware is defined  and  'efi' in image_config.libvirt.firmware %}#}
 {#    config:#}
 {#      - {type: disk,      id: disk-vda,    ptable: gpt, path: /dev/vda, wipe: superblock-recursive, preserve: false, name: '', grub_device: false}#}
 {#      - {type: partition, id: partition-0, device: disk-vda, size: (763 * 1024 * 1024), wipe: superblock, flag: boot, number: 1, preserve: false, grub_device: true}#}

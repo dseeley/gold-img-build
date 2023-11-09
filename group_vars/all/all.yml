@@ -34,7 +34,7 @@ base_os:
     iso_checksum: "none"
 
 
-packer_pkg_url: "https://releases.hashicorp.com/packer/1.9.2/packer_1.9.2_linux_amd64.zip"
+packer_pkg_url: "https://releases.hashicorp.com/packer/1.9.4/packer_1.9.4_linux_amd64.zip"
 
 image_config:
   disk_size_mb: "12288"
@@ -44,7 +44,7 @@ image_config:
   remove_snapd: yes
   systemd_debug: no     # Whether to debug systemd
   esxi:
-    host: "192.168.1.30"
+    host: "192.168.1.31"
     username: "root"
     password: !vault |-
       $ANSIBLE_VAULT;1.1;AES256
@@ -60,7 +60,7 @@ image_config:
     private_key: !vault |-
       $ANSIBLE_VAULT;1.1;AES256
       33333333333333333333333333333333333333333333333
-    firmware: "/usr/share/ovmf/OVMF.fd"
+    firmware: "efi"
     fileformat: "qcow2"
     storage_pool: "/media/vdisks"
   xcp_ng:

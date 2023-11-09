@@ -30,32 +30,33 @@
     - "{{packer_pkg_url | basename}}"
     - "{{base_os[os_id].iso_url | basename}}"
 
-- name: git clone ddelnano/packer-plugin-xenserver repo from github
-  become: yes
-  git:
-    repo: "https://github.com/ddelnano/packer-plugin-xenserver.git"
-    version: "HEAD"
-    dest: "{{ tmp_build_dir.path }}/GH--packer-plugin-xenserver"
-
-- name: docker build packer-plugin-xenserver
-  shell: docker run --rm -v "$PWD":/mnt -w /mnt/GH--packer-plugin-xenserver golang:1.16-buster go build -o ../ -v
-  args:
-    chdir: "{{ tmp_build_dir.path }}"
-
-- name: rename packer-builder-xenserver to packer-plugin-xenserver (the 'packer-plugin-' prefix is significant, it tells packer that this is a multi-component plugin (https://www.packer.io/docs/plugins#installing-plugins))
-  command: "mv packer-builder-xenserver packer-plugin-xenserver"
-  args:
-    chdir: "{{ tmp_build_dir.path }}"
-    creates: "packer-plugin-xenserver"
-
-- name: validate packer-plugin-xenserver
-  block:
-    - name: ./packer-plugin-xenserver describe
-      command: ./packer-plugin-xenserver describe
-      args: { chdir: "{{ tmp_build_dir.path }}" }
-      register: r__command_packer_plugin_xenserver_describe
-
-    - debug: msg={{r__command_packer_plugin_xenserver_describe}}
+## Note: The xcp-ng plugin is now added using the 'packer plugins install' within the _common/tasks/main.yml play
+#- name: git clone ddelnano/packer-plugin-xenserver repo from github
+#  become: yes
+#  git:
+#    repo: "https://github.com/ddelnano/packer-plugin-xenserver.git"
+#    version: "HEAD"
+#    dest: "{{ tmp_build_dir.path }}/GH--packer-plugin-xenserver"
+#
+#- name: docker build packer-plugin-xenserver
+#  shell: docker run --rm -v "$PWD":/mnt -w /mnt/GH--packer-plugin-xenserver golang:1.16-buster go build -o ../ -v
+#  args:
+#    chdir: "{{ tmp_build_dir.path }}"
+#
+#- name: rename packer-builder-xenserver to packer-plugin-xenserver (the 'packer-plugin-' prefix is significant, it tells packer that this is a multi-component plugin (https://www.packer.io/docs/plugins#installing-plugins))
+#  command: "mv packer-builder-xenserver packer-plugin-xenserver"
+#  args:
+#    chdir: "{{ tmp_build_dir.path }}"
+#    creates: "packer-plugin-xenserver"
+#
+#- name: validate packer-plugin-xenserver
+#  block:
+#    - name: ./packer-plugin-xenserver describe
+#      command: ./packer-plugin-xenserver describe
+#      args: { chdir: "{{ tmp_build_dir.path }}" }
+#      register: r__command_packer_plugin_xenserver_describe
+#
+#    - debug: msg={{r__command_packer_plugin_xenserver_describe}}
 
 
 - name: Packer build
