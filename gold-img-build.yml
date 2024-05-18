@@ -34,7 +34,7 @@
 
         - name: "Copy libvirt ssh private key file"
           copy: { content: "{{image_config.libvirt.private_key}}", dest: 'id_rsa__libvirt_svc', mode: '0600' }
-          no_log: yes
+          no_log: true
           when: "image_config.libvirt.private_key is defined"
 
         - include_role:

@@ -32,7 +32,7 @@
 
 ## Note: The xcp-ng plugin is now added using the 'packer plugins install' within the _common/tasks/main.yml play
 #- name: git clone ddelnano/packer-plugin-xenserver repo from github
-#  become: yes
+#  become: true
 #  git:
 #    repo: "https://github.com/ddelnano/packer-plugin-xenserver.git"
 #    version: "HEAD"

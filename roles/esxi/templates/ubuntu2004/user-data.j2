@@ -2,7 +2,7 @@
 autoinstall:
   version: 1
 #  interactive-sections: [ "storage" ]
-  refresh-installer: { update: yes }
+  refresh-installer: { update: true }
   apt:
     geoip: true
   keyboard: {layout: gb, toggle: 'null', variant: ''}
@@ -13,7 +13,7 @@ autoinstall:
   network:
     version: 2
     ethernets:
-      eth0: { dhcp4: yes }
+      eth0: { dhcp4: true }
   storage:
     grub: { reorder_uefi: False }
 {% if image_config.swapfile_mb is defined %}
@@ -42,8 +42,6 @@ autoinstall:
 
   user-data:
     disable_root: false
-    system_info:
-      default_user: ~
     ssh_pwauth: true
     users: {{ userinfo }}
     power_state: { mode: poweroff }
@@ -89,8 +87,6 @@ autoinstall:
 
   packages:
     - open-vm-tools
-    - curl
-    - python3-pip
 
   early-commands:
     ## Block SSH access at the early stage of boot because packer will otherwise connect to it and try to shut down the VM.

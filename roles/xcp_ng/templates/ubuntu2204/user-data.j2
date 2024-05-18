@@ -2,7 +2,7 @@
 autoinstall:
   version: 1
 #  interactive-sections: [ "storage" ]
-  refresh-installer: { update: yes }
+  refresh-installer: { update: true }
   apt:
     geoip: true
   keyboard: {layout: gb, toggle: 'null', variant: ''}
@@ -16,7 +16,7 @@ autoinstall:
       version: 2
       ethernets:
         eth0:
-           dhcp4: yes
+           dhcp4: true
   storage:
     grub: { reorder_uefi: False }
 {% if image_config.swapfile_mb is defined %}

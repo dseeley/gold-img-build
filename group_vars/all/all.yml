@@ -30,19 +30,23 @@ base_os:
     iso_checksum: "none"
   ubuntu2204:
     name: "ubuntu2204"
-    iso_url: "https://releases.ubuntu.com/22.04/ubuntu-22.04.3-live-server-amd64.iso"
+    iso_url: "https://releases.ubuntu.com/22.04/ubuntu-22.04.4-live-server-amd64.iso"
+    iso_checksum: "none"
+  ubuntu2404:
+    name: "ubuntu2404"
+    iso_url: "https://releases.ubuntu.com/24.04/ubuntu-24.04-live-server-amd64.iso"
     iso_checksum: "none"
 
 
-packer_pkg_url: "https://releases.hashicorp.com/packer/1.9.4/packer_1.9.4_linux_amd64.zip"
+packer_pkg_url: "https://releases.hashicorp.com/packer/1.10.3/packer_1.10.3_linux_amd64.zip"
 
 image_config:
   disk_size_mb: "12288"
   memory_mb: "2048"
   cpus: "2"
   swapfile_mb: 0
-  remove_snapd: yes
-  systemd_debug: no     # Whether to debug systemd
+  remove_snapd: true
+  systemd_debug: false     # Whether to debug systemd
   esxi:
     host: "192.168.1.31"
     username: "root"

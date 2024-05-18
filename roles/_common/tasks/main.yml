@@ -48,7 +48,7 @@
       docker_image:
         source: build
         build:
-          pull: yes
+          pull: true
           path: "{{ tmp_build_dir.path }}"
         force_source: true
         name: "{{image_name}}:latest"
@@ -56,8 +56,8 @@
 
     - name: Packer create and run the Docker container
       docker_container:
-        cleanup: yes
-        detach: no
+        cleanup: true
+        detach: false
         name: "{{image_name}}"
         image: "{{r__docker_image.image.Id}}"
         state: started
@@ -67,7 +67,7 @@
     - name: Packer remove Docker image
       docker_image:
         name: "{{image_name}}"
-        force_absent: yes
+        force_absent: true
         state: absent
   when: use_docker is defined and use_docker|bool
 

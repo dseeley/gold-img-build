@@ -36,12 +36,12 @@
       when: r__stat_gcp_storage_pool_image_name.stat.exists|default(False)|bool
 
     - name: libvirt | Refresh the default storage pool to add the newly-created disk
-      become: yes
+      become: true
       shell: "virsh pool-refresh --pool default"
 
     - name: libvirt | register the VM
       delegate_to: "{{groups['libvirt'][0]}}"
-      become: yes
+      become: true
       shell: "echo \"<domain type='kvm'>
         <name>{{image_name}}</name>
         <memory unit='KiB'>2097152</memory>

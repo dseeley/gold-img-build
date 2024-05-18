@@ -3,6 +3,7 @@ Builds 'gold' Ubuntu server images for ESXi and libvirt/qemu/kvm from the base s
 
 
 Several configurations are provided (in `roles/<cloud_type>/templates/<os_id>/`):
++ **ubuntu2404**:  Uses the [autoinstall](https://ubuntu.com/server/docs/install/autoinstall-reference) mechanism
 + **ubuntu2204**:  Uses the [autoinstall](https://ubuntu.com/server/docs/install/autoinstall-reference) mechanism
 + **ubuntu2004**:  Uses the [autoinstall](https://ubuntu.com/server/docs/install/autoinstall-reference) mechanism
 + **ubuntu2004_legacy**:  Uses the legacy preseeding technology.
