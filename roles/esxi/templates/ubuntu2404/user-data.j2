@@ -40,6 +40,9 @@ autoinstall:
 {#      - {type: mount,     id: mount-0,      device: format-0, path: /}#}
 {#{% endif %}#}
 
+  ## Note: This 'user-data' section runs *after the reboot* that happens at the end of the main 'late-commands' section.
+  ##       You must not remove cloud-init until here, otherwise this section won't run at all (as it is *part* of cloud-init).
+  ##       snapd also should be removed in here, because it cannot be removed entirely in late-commands, due to that being a chroot environment.
   user-data:
     disable_root: false
     ssh_pwauth: true

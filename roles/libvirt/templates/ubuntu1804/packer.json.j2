@@ -45,6 +45,9 @@
       "floppy_files": ["{{cloud_type}}__{{os_id}}/kickstart.cfg"],
 {% if image_config.libvirt.firmware is defined  and  'efi' in image_config.libvirt.firmware %}
 {# Defining the devices (specifically, their boot indexes) manually is necessary to set the boot order to HD-first with the OVMF UEFI bootloader.  See https://discuss.hashicorp.com/t/building-uefi-images-with-qemu-kvm/18061/5 #}
+      "efi_boot": true,
+      "efi_firmware_code": "/usr/share/OVMF/OVMF_CODE_4M.fd",
+      "efi_firmware_vars": "/usr/share/OVMF/OVMF_VARS_4M.fd",
       "qemuargs": [
         [ "-device", "qxl-vga,id=video0,ram_size=67108864,vram_size=67108864,vram64_size_mb=0,vgamem_mb=16,max_outputs=1" ],
         [ "-drive", "if=pflash,format=raw,read-only=on,file=/usr/share/ovmf/OVMF.fd" ],
@@ -69,6 +72,7 @@
       "shutdown_timeout": "20m",
       "ssh_username": "root",
       "skip_compaction": false,
+      "use_pflash": true,
       "vm_name": "{{image_name}}",
       "vnc_bind_address": "0.0.0.0"
     }
