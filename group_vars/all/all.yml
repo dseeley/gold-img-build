@@ -34,11 +34,11 @@ base_os:
     iso_checksum: "none"
   ubuntu2404:
     name: "ubuntu2404"
-    iso_url: "https://releases.ubuntu.com/24.04/ubuntu-24.04-live-server-amd64.iso"
+    iso_url: "https://releases.ubuntu.com/24.04/ubuntu-24.04.1-live-server-amd64.iso"
     iso_checksum: "none"
 
 
-packer_pkg_url: "https://releases.hashicorp.com/packer/1.10.3/packer_1.10.3_linux_amd64.zip"
+packer_pkg_url: "https://releases.hashicorp.com/packer/1.11.2/packer_1.11.2_linux_amd64.zip"
 
 image_config:
   disk_size_mb: "12288"
