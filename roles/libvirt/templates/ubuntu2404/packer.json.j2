@@ -7,7 +7,7 @@
         "<up><wait1s><up><wait1s><up><wait1s>",
         "c<wait1s>",
         "set gfxpayload=keep<enter><wait1s>",
-        "linux /casper/vmlinuz net.ifnames=0 biosdevname=0 modprobe.blacklist=floppy autoinstall ds='nocloud;s=http://{% raw %}{{ .HTTPIP }}:{{ .HTTPPort }}{% endraw %}/' ---<enter><wait1s>",
+        "linux /casper/vmlinuz ipv6.disable=1 net.ifnames=0 biosdevname=0 modprobe.blacklist=floppy autoinstall ds='nocloud;s=http://{% raw %}{{ .HTTPIP }}:{{ .HTTPPort }}{% endraw %}/' ---<enter><wait1s>",
         "initrd /casper/initrd<enter><wait1s>",
         "boot<enter>"
       ],
