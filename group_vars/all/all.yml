@@ -5,8 +5,11 @@ userinfo:
     lock_passwd: false
     hashed_passwd: !vault |
       $ANSIBLE_VAULT;1.1;AES256
-      33333333333333333333333333333333333333333333333
+            33333333333333333333333333333333333333333333333
     ssh_authorized_keys: ['ssh-rsa 33333333333333333333333333333333333333333333333']
+  - name: tmpshutdown
+    lock_passwd: false
+    hashed_passwd: "{{tmpshutdown_pw_hashed}}"
 #  - name: ansible
 #    ssh_authorized_keys: ['ssh-rsa 33333333333333333333333333333333333333333333333']
 #    sudo: "ALL=(ALL) NOPASSWD:ALL"
@@ -68,7 +71,7 @@ image_config:
     firmware: "efi"
     fileformat: "qcow2"
     storage_pool: "/media/vdisks"
-    plugin: "github.com/hashicorp/qemu v1.1.1"
+    plugin: "github.com/hashicorp/qemu"
   xcp_ng:
     host: "192.168.1.71"
     username: "root"

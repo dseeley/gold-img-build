@@ -47,7 +47,7 @@ autoinstall:
     disable_root: false
     ssh_pwauth: true
     users: {{ userinfo }}
-    power_state: { mode: poweroff }
+    #power_state: { mode: poweroff }
     write_files:
       - content: |
           [Unit]

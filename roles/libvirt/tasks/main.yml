@@ -14,6 +14,13 @@
 
     - assert: { that: "'KVM acceleration can be used' in r__command_kvmok.stdout", msg: "KVM acceleration not enabled" }
 
+- name: Set a random password for tmpshutdown_pw
+  set_fact:
+    tmpshutdown_pw: "{{ lookup('password', '/dev/null length=20 chars=ascii_letters,digits') }}"
+
+- name: Create the hashed password for tmpshutdown_pw
+  set_fact:
+    tmpshutdown_pw_hashed: "{{ lookup('pipe', 'mkpasswd --method=SHA-512 --rounds=4096 ' ~ tmpshutdown_pw) }}"
 
 - name: libvirt | run common deploy
   include_role:

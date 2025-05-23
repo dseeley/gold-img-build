@@ -13,7 +13,7 @@
       ],
       "boot_key_interval": "25ms",
       "boot_wait": "5s",
-      "communicator": "none",
+      "communicator": "ssh",
       "cpus": {{image_config.cpus}},
       "disk_size": {{image_config.disk_size_mb}},
 {% if image_config.libvirt.firmware is defined  and  'efi' in image_config.libvirt.firmware %}
@@ -44,9 +44,10 @@
       "net_bridge": "{{image_config.net_bridge}}",
 {% endif %}
       "output_directory": "{{image_config.libvirt.storage_pool}}/{{image_name}}",
-      "shutdown_command": "#dummy_to_prevent_packer_doing_forcible_poweroff",
       "shutdown_timeout": "20m",
-      "ssh_username": "root",
+      "ssh_username": "tmpshutdown",
+      "ssh_password": "{{tmpshutdown_pw}}",
+      "ssh_timeout": "20m",
       "skip_compaction": false,
       "use_pflash": true,
       "vm_name": "{{image_name}}",
