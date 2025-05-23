@@ -10,7 +10,7 @@ COPY {{cloud_type}}__{{os_id}}/* /{{cloud_type}}__{{os_id}}/
 COPY {{base_os[os_id].iso_url | basename}} {{packer_pkg_url | basename}} /
 RUN apt-get update; apt-get -y install unzip \
     && unzip {{packer_pkg_url | basename}} \
-    && ./packer plugins install {{plugin}}
+    && ./packer plugins install {{image_config[cloud_type].plugin}}
 CMD ["./packer", "build", "-on-error=abort", "{{cloud_type}}__{{os_id}}/packer.json"]
 
 {%  else %}
@@ -20,7 +20,7 @@ RUN  apt-get update; apt-get -y install unzip wget \
   && wget {{base_os[os_id].iso_url}} \
   && wget {{packer_pkg_url}} \
   && unzip {{packer_pkg_url | basename}} \
-  && ./packer plugins install {{plugin}}
+  && ./packer plugins install {{image_config[cloud_type].plugin}}
 CMD ["./packer", "build", "-on-error=abort", "{{cloud_type}}__{{os_id}}/packer.json"]
 
 {% endif %}

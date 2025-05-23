@@ -22,7 +22,10 @@
       "efi_firmware_code": "/usr/share/OVMF/OVMF_CODE_4M.fd",
       "efi_firmware_vars": "/usr/share/OVMF/OVMF_VARS_4M.fd",
       "qemuargs": [
-        [ "-device", "qxl-vga,id=video0,ram_size=67108864,vram_size=67108864,vram64_size_mb=0,vgamem_mb=16,max_outputs=1" ],
+        ["-cpu", "host,-svm"],
+        ["-audiodev", "alsa,id=alsa"],
+        {# [ "-device", "virtio-gpu-pci,max_outputs=1" ],#}
+        [ "-device", "qxl-vga,id=video0,ram_size=134217728,vram_size=134217728,vgamem_mb=32,max_outputs=1" ],
         [ "-drive", "if=pflash,format=raw,read-only=on,file=/usr/share/ovmf/OVMF.fd" ],
         [ "-device", "virtio-blk-pci,drive=drive0,bootindex=0" ],
         [ "-device", "virtio-blk-pci,drive=cdrom0,bootindex=1" ],

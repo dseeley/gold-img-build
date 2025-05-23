@@ -38,7 +38,7 @@ base_os:
     iso_checksum: "none"
 
 
-packer_pkg_url: "https://releases.hashicorp.com/packer/1.11.2/packer_1.11.2_linux_amd64.zip"
+packer_pkg_url: "https://releases.hashicorp.com/packer/1.12.0/packer_1.12.0_linux_amd64.zip"
 
 image_config:
   disk_size_mb: "12288"
@@ -58,6 +58,7 @@ image_config:
     # ethernet0_macAddress: "00:0c:29:f2:dc:da"
     firmware: "efi"
     hw_version: 19
+    plugin: "github.com/hashicorp/vmware"
   libvirt:
     host: "192.168.1.3"
     username: "svc"
@@ -67,6 +68,7 @@ image_config:
     firmware: "efi"
     fileformat: "qcow2"
     storage_pool: "/media/vdisks"
+    plugin: "github.com/hashicorp/qemu v1.1.1"
   xcp_ng:
     host: "192.168.1.71"
     username: "root"
@@ -78,3 +80,4 @@ image_config:
     firmware: "bios"
     network_names: "Network0"
     platform_args: {viridian: 'false', nx: 'true', pae: 'true', apic: 'true', timeoffset: '0', acpi: '1', cores-per-socket: '1'}
+    plugin: "github.com/ddelnano/xenserver"
