@@ -2,7 +2,8 @@
 autoinstall:
   version: 1
 #  interactive-sections: [ "storage" ]
-  refresh-installer: { update: true }
+  ## Set this to false until https://bugs.launchpad.net/subiquity/+bug/2092438 is fixed (comment 14)
+  refresh-installer: { update: false }
   apt:
     geoip: true
   keyboard: {layout: gb, toggle: 'null', variant: ''}
@@ -40,6 +41,9 @@ autoinstall:
 {#      - {type: mount,     id: mount-0,      device: format-0, path: /}#}
 {#{% endif %}#}
 
+  ## Note: This 'user-data' section runs *after the reboot* that happens at the end of the main 'late-commands' section.
+  ##       You must not remove cloud-init until here, otherwise this section won't run at all (as it is *part* of cloud-init).
+  ##       snapd also should be removed in here, because it cannot be removed entirely in late-commands, due to that being a chroot environment (and subiquity being a snap!).
   user-data:
     disable_root: false
     ssh_pwauth: true
@@ -49,16 +53,13 @@ autoinstall:
       - content: |
           [Unit]
           Description=Gold-image pre-shutdown activities.  clean cloud-init, empty journal, remove self
-          Requires=network-online.target network.target dbus.service nss-lookup.target
-          After=network-online.target network.target dbus.service nss-lookup.target
 
           [Service]
           Type=oneshot
           RemainAfterExit=yes
           ExecStart=/bin/true
-          ExecStop=/bin/bash -c 'until cloud-init status 2>&1 | grep done; do sleep 0.1; done; /usr/bin/cloud-init clean; rm -rf /var/log/journal/*; rm -rf /etc/systemd/system/goldbuildfinish.service'
+          ExecStop=/bin/bash -c 'while cloud-init status 2>&1 | grep -q "running"; do sleep 0.5; done; /usr/bin/cloud-init clean; rm -rf /var/log/journal/*; rm -f /etc/systemd/system/goldbuildfinish.service; /bin/systemctl daemon-reload'
           TimeoutStopSec=30
-          KillMode=none
 
           [Install]
           WantedBy=multi-user.target
@@ -85,9 +86,7 @@ autoinstall:
       - truncate -s0 /etc/machine-id
       - truncate -s0 /var/lib/dbus/machine-id
 
-  packages:
-    - qemu-guest-agent
-    - cloud-guest-utils
+{#  packages:#}
 
   early-commands:
     ## Block SSH access at the early stage of boot because packer will otherwise connect to it and try to shut down the VM.
@@ -113,5 +112,6 @@ autoinstall:
     - curtin in-target -- /usr/bin/apt-get update
     - curtin in-target -- /usr/bin/apt-get --purge -y remove apport bcache-tools btrfs-progs byobu cloud-initramfs-copymods cloud-initramfs-dyn-netconf friendly-recovery fwupd landscape-common lxd-agent-loader ntfs-3g open-vm-tools plymouth plymouth-theme-ubuntu-text popularity-contest screen sosreport tmux ufw
     - curtin in-target -- /usr/bin/apt-get -y dist-upgrade
+    - curtin in-target -- /usr/bin/apt-get -y install qemu-guest-agent cloud-guest-utils
     - curtin in-target -- /usr/bin/apt-get -y --purge autoremove
     - curtin in-target -- /usr/bin/apt-get -y autoclean

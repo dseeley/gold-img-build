@@ -4,7 +4,7 @@
       "type": "qemu",
       "accelerator": "kvm",
       "boot_command": [
-        "<up><wait1s><up><wait1s><up><wait1s>",
+        "<up><wait1s>",
         "c<wait1s>",
         "set gfxpayload=keep<enter><wait1s>",
         "linux /casper/vmlinuz net.ifnames=0 biosdevname=0 modprobe.blacklist=floppy autoinstall ds='nocloud-net;s=http://{% raw %}{{ .HTTPIP }}:{{ .HTTPPort }}{% endraw %}/' ---<enter><wait1s>",
@@ -12,7 +12,7 @@
         "boot<enter>"
       ],
       "boot_key_interval": "25ms",
-      "boot_wait": "5s",
+      "boot_wait": "2s",
       "communicator": "none",
       "cpus": {{image_config.cpus}},
       "disk_size": {{image_config.disk_size_mb}},
@@ -22,7 +22,10 @@
       "efi_firmware_code": "/usr/share/OVMF/OVMF_CODE_4M.fd",
       "efi_firmware_vars": "/usr/share/OVMF/OVMF_VARS_4M.fd",
       "qemuargs": [
-        [ "-device", "qxl-vga,id=video0,ram_size=67108864,vram_size=67108864,vram64_size_mb=0,vgamem_mb=16,max_outputs=1" ],
+        ["-cpu", "host,-svm"],
+        ["-audiodev", "alsa,id=alsa"],
+        {# [ "-device", "virtio-gpu-pci,max_outputs=1" ],#}
+        [ "-device", "qxl-vga,id=video0,ram_size=134217728,vram_size=134217728,vgamem_mb=32,max_outputs=1" ],
         [ "-drive", "if=pflash,format=raw,read-only=on,file=/usr/share/ovmf/OVMF.fd" ],
         [ "-device", "virtio-blk-pci,drive=drive0,bootindex=0" ],
         [ "-device", "virtio-blk-pci,drive=cdrom0,bootindex=1" ],

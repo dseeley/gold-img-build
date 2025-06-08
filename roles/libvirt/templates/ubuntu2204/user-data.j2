@@ -40,6 +40,9 @@ autoinstall:
 {#      - {type: mount,     id: mount-0,      device: format-0, path: /}#}
 {#{% endif %}#}
 
+  ## Note: This 'user-data' section runs *after the reboot* that happens at the end of the main 'late-commands' section.
+  ##       You must not remove cloud-init until here, otherwise this section won't run at all (as it is *part* of cloud-init).
+  ##       snapd also should be removed in here, because it cannot be removed entirely in late-commands, due to that being a chroot environment (and subiquity being a snap!).
   user-data:
     disable_root: false
     ssh_pwauth: true
@@ -49,16 +52,13 @@ autoinstall:
       - content: |
           [Unit]
           Description=Gold-image pre-shutdown activities.  clean cloud-init, empty journal, remove self
-          Requires=network-online.target network.target dbus.service nss-lookup.target
-          After=network-online.target network.target dbus.service nss-lookup.target
 
           [Service]
           Type=oneshot
           RemainAfterExit=yes
           ExecStart=/bin/true
-          ExecStop=/bin/bash -c 'until cloud-init status 2>&1 | grep done; do sleep 0.1; done; /usr/bin/cloud-init clean; rm -rf /var/log/journal/*; rm -rf /etc/systemd/system/goldbuildfinish.service'
+          ExecStop=/bin/bash -c 'while cloud-init status 2>&1 | grep -q "running"; do sleep 0.5; done; /usr/bin/cloud-init clean; rm -rf /var/log/journal/*; rm -f /etc/systemd/system/goldbuildfinish.service; /bin/systemctl daemon-reload'
           TimeoutStopSec=30
-          KillMode=none
 
           [Install]
           WantedBy=multi-user.target
