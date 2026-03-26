@@ -1,0 +1,133 @@
+# AlmaLinux 10 Kickstart for Packer gold image
+# Hybrid: cdrom as primary source + network repos for AppStream packages
+
+#version=RHEL10
+text
+eula --agreed
+firstboot --disable
+
+# Locale and keyboard
+lang en_GB.UTF-8
+keyboard --vckeymap=gb --xlayouts=gb
+timezone Europe/London --utc
+
+# Network (early activation - required for network fallback)
+network --bootproto=dhcp --device=eth0 --noipv6 --activate --onboot=yes
+network --hostname=localhost.localdomain
+
+# === Hybrid installation source ===
+# Primary: use the mounted minimal ISO (cdrom)
+cdrom
+
+# Fallback: network BaseOS (in case needed) + AppStream for extra packages
+url --url="https://repo.almalinux.org/almalinux/10/BaseOS/x86_64/os/"
+repo --name="AlmaLinux-AppStream" --baseurl="https://repo.almalinux.org/almalinux/10/AppStream/x86_64/os/" --install
+
+# Root password (temporary)
+rootpw --iscrypted --allow-ssh $y$j9T$pFY.xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+# Security
+selinux --disabled
+firewall --disabled
+
+# Bootloader
+{% if image_config.libvirt.firmware is defined  and  'efi' in image_config.libvirt.firmware %}
+bootloader --location=mbr --timeout=5 --append="net.ifnames=0 biosdevname=0 ipv6.disable=1" --boot-drive=vda
+{% else %}
+bootloader --location=mbr --timeout=5 --append="net.ifnames=0 biosdevname=0 ipv6.disable=1"
+{% endif %}
+
+# Disk layout
+zerombr
+ignoredisk --only-use=vda
+clearpart --all --initlabel --drives=vda
+{% if image_config.swapfile_mb is defined and image_config.swapfile_mb|int > 0 %}
+autopart --type=plain --fstype=ext4
+{% else %}
+autopart --type=plain --fstype=ext4 --noswap
+{% endif %}
+
+# Shutdown after install (Packer detects completion)
+shutdown
+
+# --------------------------------------------------------------------------
+# Packages
+# --------------------------------------------------------------------------
+%packages
+@^minimal-environment
+qemu-guest-agent
+cloud-init
+cloud-utils-growpart
+-plymouth
+-plymouth-core-libs
+-plymouth-scripts
+-microcode_ctl
+%end
+
+
+# --------------------------------------------------------------------------
+# Post-install: Gold image preparation
+# --------------------------------------------------------------------------
+%post --log=/root/ks-post.log
+
+mkdir -p /etc/cloud/cloud.cfg.d
+
+## Cloud-init datasource configuration for future libvirt clones
+cat > /etc/cloud/cloud.cfg.d/99_datasource.cfg << 'EOF'
+datasource_list: [ NoCloud, None ]
+EOF
+
+## Allow future cloud configs to configure networking
+rm -f /etc/cloud/cloud.cfg.d/99-installer-disable-network.cfg
+
+## Import the official AlmaLinux 10 GPG key (required when using network repos)
+rpm --import https://repo.almalinux.org/almalinux/RPM-GPG-KEY-AlmaLinux-10 || true
+
+# Also import any local key files that may be present on the system
+for key in /etc/pki/rpm-gpg/RPM-GPG-KEY-AlmaLinux*; do
+[ -f "$key" ] && rpm --import "$key" || true
+done
+
+## SSH: allow root login and password auth (for Packer/Ansible)
+sed -ri 's/^#?(PermitRootLogin)\s.*/\1 yes/' /etc/ssh/sshd_config
+sed -ri 's/^#?(PasswordAuthentication)\s.*/\1 yes/' /etc/ssh/sshd_config
+
+## GRUB: force predictable eth[n] names (add only if missing)
+sed -ri '
+  /^GRUB_CMDLINE_LINUX=/ {
+  /net\.ifnames=0/! s/(")([^"]*)"/\1\2 net.ifnames=0"/
+  /biosdevname=0/! s/(")([^"]*)"/\1\2 biosdevname=0"/
+}' /etc/default/grub
+
+sed -ri 's/^GRUB_TIMEOUT\s*=.*$/GRUB_TIMEOUT=5/' /etc/default/grub
+grub2-mkconfig -o /boot/grub2/grub.cfg
+
+## Disable SELinux
+sed -ri 's/^SELINUX=.*/SELINUX=disabled/' /etc/selinux/config
+
+{% if image_config.systemd_debug is defined and image_config.systemd_debug %}
+sed -ri 's/^#(LogLevel\s*=\s*).*?/\1debug/' /etc/systemd/system.conf
+{% endif %}
+
+{% if image_config.swapfile_mb is defined and image_config.swapfile_mb|int == 0 %}
+swapoff -a
+sed -i '/\sswap\s/d' /etc/fstab
+{% endif %}
+
+## Add packages that can't be added in %packages
+dnf -y install dnf-utils bind-utils bash-completion git
+
+## System update + cleanup
+dnf -y upgrade --refresh
+dnf -y autoremove
+dnf clean all
+rm -rf /var/cache/dnf/*
+
+## Zero free space for better qcow2 compression (Packer skip_compaction)
+dd if=/dev/zero of=/zerofile bs=256M count=4 || true
+rm -f /zerofile
+
+## Reset machine-id so cloned VMs generate a new one
+truncate -s0 /etc/machine-id
+
+%end

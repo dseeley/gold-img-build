@@ -1,0 +1,117 @@
+#cloud-config
+autoinstall:
+  version: 1
+#  interactive-sections: [ "storage" ]
+  refresh-installer: { update: true }
+  apt:
+    geoip: true
+  keyboard: {layout: gb, toggle: 'null', variant: ''}
+  locale: en_GB.UTF-8
+  ssh:
+    install-server: true
+    ## Note: manage the user-ssh config inside the cloud-init standard user-data section below
+  network:
+    version: 2
+    ethernets:
+      eth0: { dhcp4: true }
+  storage:
+    grub: { reorder_uefi: False }
+{% if image_config.swapfile_mb is defined %}
+    ## Note: Setting swap to 0 when using 'layout' (instead of 'config') does not currently work (hence removing swap in late-commands).
+    swap: {size: {{ image_config.swapfile_mb|int }}}
+{% endif %}
+    ## Note: The 'storage/layout' syntax will install the OS on the biggest disk it can find.  To install to a different disk, you must use the curtin 'storage/config' syntax, and specify the serial number of that disk explicitly.
+    layout: { name: direct }
+{#{% if image_config.libvirt.firmware is defined  and  'efi' in image_config.libvirt.firmware %}#}
+{#    config:#}
+{#      - {type: disk,      id: disk-vda,    ptable: gpt, path: /dev/vda, wipe: superblock-recursive, preserve: false, name: '', grub_device: false}#}
+{#      - {type: partition, id: partition-0, device: disk-vda, size: (763 * 1024 * 1024), wipe: superblock, flag: boot, number: 1, preserve: false, grub_device: true}#}
+{#      - {type: format,    id: format-0,    volume: partition-0, fstype: fat32, preserve: false}#}
+{#      - {type: mount,     id: mount-0,     device: format-0, path: /boot/efi}#}
+{#      - {type: partition, id: partition-1, device: disk-vda, size: (image_config.disk_size_mb|int - 2 - 763) * 1024 * 1024, wipe: superblock, flag: '', number: 2, preserve: false}#}
+{#      - {type: format,    id: format-1,    volume: partition-1, fstype: ext4, preserve: false}#}
+{#      - {type: mount,     id: mount-1,     device: format-1, path: /}#}
+{#{% else %}#}
+{#    config:#}
+{#      - {type: disk,      id: disk-vda,     ptable: gpt, path: /dev/vda, wipe: superblock-recursive, preserve: false, name: '', grub_device: true}#}
+{#      - {type: partition, id: partition-0,  device: disk-vda, number: 1, size: (1 * 1024 * 1024), flag: bios_grub, preserve: false}#}
+{#      - {type: partition, id: partition-1,  device: disk-vda, number: 2, size: {{ (image_config.disk_size_mb|int - 2 - 1) * 1024 * 1024 }}, wipe: superblock, flag: '', preserve: false}#}
+{#      - {type: format,    id: format-0,     volume: partition-1, fstype: ext4, preserve: false}#}
+{#      - {type: mount,     id: mount-0,      device: format-0, path: /}#}
+{#{% endif %}#}
+
+  ## Note: This 'user-data' section runs *after the reboot* that happens at the end of the main 'late-commands' section.
+  ##       You must not remove cloud-init until here, otherwise this section won't run at all (as it is *part* of cloud-init).
+  ##       snapd also should be removed in here, because it cannot be removed entirely in late-commands, due to that being a chroot environment.
+  user-data:
+    disable_root: false
+    ssh_pwauth: true
+    users: {{ userinfo }}
+    power_state: { mode: poweroff }
+    write_files:
+      - content: |
+          [Unit]
+          Description=Gold-image pre-shutdown activities.  clean cloud-init, empty journal, remove self
+
+          [Service]
+          Type=oneshot
+          RemainAfterExit=yes
+          ExecStart=/bin/true
+          ExecStop=/bin/bash -c 'while cloud-init status 2>&1 | grep -q "running"; do sleep 0.5; done; /usr/bin/cloud-init clean; rm -rf /var/log/journal/*; rm -f /etc/systemd/system/goldbuildfinish.service; /bin/systemctl daemon-reload'
+          TimeoutStopSec=30
+
+          [Install]
+          WantedBy=multi-user.target
+        owner: root:root
+        permissions: '0644'
+        path: /etc/systemd/system/goldbuildfinish.service
+    runcmd:
+      - /bin/systemctl daemon-reload
+      - /bin/systemctl start goldbuildfinish.service
+{#      ## Set a background task to wait for cloud-init to finish and then run cloud-init clean.  Allows cloud-init to run again (with a different datasource) when cloning VM.  -  NOT RELIABLE, race condition.#}
+{#      - /bin/bash -c "until cloud-init status 2>&1 | grep done; do sleep 0.01; done; /usr/bin/cloud-init clean" &               #TESTING: /bin/bash -c 'until nc -4 -z -v localhost 8081 2>&1 | grep succeeded ; do sleep 1; done; echo hurrah'#}
+      ## Allow future cloud configs to configure the machine
+      - /bin/rm -f /etc/cloud/cloud.cfg.d/subiquity-disable-cloudinit-networking.cfg
+      ## Remove all datasources except nocloud
+      - /usr/bin/sed -ri 's/^(datasource_list:).*?/\1 [ NoCloud, None ]/' /etc/cloud/cloud.cfg.d/90_dpkg.cfg
+{% if image_config.remove_snapd is defined and image_config.remove_snapd %}
+      - /usr/bin/apt-get --purge -y remove snapd
+      - /usr/bin/rm -rf ~/snap /snap /var/snap /var/lib/snapd
+{% endif  %}
+      - /bin/rm -rf /var/cache/apt/* /var/lib/apt/lists/*
+      ## Create a file filled with zeroes to occupy the non-zeroed, but deleted free space, so that a 'qemu-img convert' (in packer, where '"skip_compaction": false' is set) can dedpulicate the zeros and shrink the sparse disk.
+      - dd if=/dev/zero of=zero bs=256M; rm zero
+      ## Reset the machine-id to 0 so it is regenerated at next startup (when it is cloned). This is the default dhcp unique identifier, as well as defining systemd's "ConditionFirstBoot"
+      - truncate -s0 /etc/machine-id
+      - truncate -s0 /var/lib/dbus/machine-id
+
+  packages:
+    - qemu-guest-agent
+    - cloud-guest-utils
+
+  early-commands:
+    ## Block SSH access at the early stage of boot because packer will otherwise connect to it and try to shut down the VM.
+    - /usr/sbin/iptables -A INPUT -p tcp --destination-port 22 -j DROP
+
+  late-commands:
+    ## Force the original eth[n] naming convention, so we get predictable interface name for subsequent VM provisioning tooling.
+    - curtin in-target -- sed -ri 's/^(GRUB_CMDLINE_LINUX\s*=\s*)"(.*?)"$/\1"\2 net.ifnames=0 biosdevname=0"/' /etc/default/grub
+    ## Add a grub timeout, to allow us to get to boot screen if needed.
+    - curtin in-target -- sed -ri 's/^GRUB_TIMEOUT\s*=.*$/GRUB_TIMEOUT=5/' /etc/default/grub
+    - curtin in-target -- /usr/sbin/grub-mkconfig -o /boot/grub/grub.cfg
+    ## Disable the Canonical motd 'news' and the help text
+    - curtin in-target -- sed -i 's/^ENABLED=.*/ENABLED=0/' /etc/default/motd-news
+    - curtin in-target -- chmod -x /etc/update-motd.d/10-help-text
+{% if image_config.systemd_debug is defined and image_config.systemd_debug %}
+    - curtin in-target -- sed -ri 's/^#(LogLevel\s*=\s*).*?/\1debug/' /etc/systemd/system.conf
+{% endif  %}
+{% if image_config.swapfile_mb is defined and image_config.swapfile_mb|int == 0 %}
+    - curtin in-target -- swapoff -a
+    - curtin in-target -- sed -i '/^\/swap.img/d' /etc/fstab
+    - curtin in-target -- rm -f /swap.img
+{% endif  %}
+    - curtin in-target -- /usr/bin/apt-get update
+    - curtin in-target -- /usr/bin/apt-get --purge -y remove apport bcache-tools btrfs-progs byobu cloud-initramfs-copymods cloud-initramfs-dyn-netconf friendly-recovery fwupd landscape-common lxd-agent-loader ntfs-3g open-vm-tools plymouth plymouth-theme-ubuntu-text popularity-contest screen sosreport tmux ufw
+    - curtin in-target -- /usr/bin/apt-get -y dist-upgrade
+    - curtin in-target -- /usr/bin/apt-get -y --purge autoremove
+    - curtin in-target -- /usr/bin/apt-get -y autoclean
