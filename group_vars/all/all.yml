@@ -1,5 +1,6 @@
 ---
 
+# NOTE: 'hashed_passwd' is a normal passwd, but is used to define passwords on pre-existing users (e.g., 'root').  'passwd' is used to set a password for a new user.
 userinfo:
   - name: root
     lock_passwd: false
@@ -7,8 +8,8 @@ userinfo:
       $ANSIBLE_VAULT;1.1;AES256
       33333333333333333333333333333333333333333333333
     ssh_authorized_keys: ['ssh-rsa 33333333333333333333333333333333333333333333333']
-#  - name: ansible
-#    ssh_authorized_keys: ['ssh-rsa 33333333333333333333333333333333333333333333333']
+#  - name: testuser
+#    ssh_authorized_keys: ['ssh-rsa 33333333333333333333333333333333333333333333333==']
 #    sudo: "ALL=(ALL) NOPASSWD:ALL"
 #    groups: "admin"
 #    passwd: "*"

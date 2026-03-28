@@ -1,6 +1,3 @@
-# AlmaLinux 10 Kickstart for Packer gold image
-# Hybrid: cdrom as primary source + network repos for AppStream packages
-
 #version=RHEL10
 text
 eula --agreed
@@ -23,8 +20,7 @@ cdrom
 url --url="https://repo.almalinux.org/almalinux/10/BaseOS/x86_64/os/"
 repo --name="AlmaLinux-AppStream" --baseurl="https://repo.almalinux.org/almalinux/10/AppStream/x86_64/os/" --install
 
-# Root password (temporary)
-rootpw --iscrypted --allow-ssh $y$j9T$pFY.xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+rootpw --iscrypted {{ (userinfo | selectattr('name', 'equalto', 'root'))[0].hashed_passwd }}
 
 # Security
 selinux --disabled
@@ -68,7 +64,29 @@ cloud-utils-growpart
 # --------------------------------------------------------------------------
 # Post-install: Gold image preparation
 # --------------------------------------------------------------------------
-%post --log=/root/ks-post.log
+%post --log=/var/log/anaconda/ks-post.log
+
+## Create users from userinfo list (equivalent to cloud-init users)
+{% for user in userinfo %}
+{% if user.name != 'root' %}
+useradd -m -s {{ user.shell | default('/bin/bash') }} -p '{{ user.passwd | default('*') }}' {{ user.name }}
+{% endif %}
+
+new_homedir=$(getent passwd {{ user.name }} | cut -d: -f6)
+
+mkdir -p "${new_homedir}/.ssh"
+printf '%s\n' {% for key in user.ssh_authorized_keys %}'{{ key }}'{% if not loop.last %} {% endif %}{% endfor %} > "${new_homedir}/.ssh/authorized_keys"
+
+chmod 700 "${new_homedir}/.ssh"
+chmod 600 "${new_homedir}/.ssh/authorized_keys"
+chown -R {{ user.name }}:{{ user.name }} "${new_homedir}/.ssh"
+restorecon -R "${new_homedir}/.ssh" || true
+
+{% if user.sudo is defined %}
+echo '{{ user.name }} {{ user.sudo }}' > /etc/sudoers.d/{{ user.name }}
+chmod 440 /etc/sudoers.d/{{ user.name }}
+{% endif %}
+{% endfor %}
 
 mkdir -p /etc/cloud/cloud.cfg.d
 
@@ -88,9 +106,11 @@ for key in /etc/pki/rpm-gpg/RPM-GPG-KEY-AlmaLinux*; do
 [ -f "$key" ] && rpm --import "$key" || true
 done
 
-## SSH: allow root login and password auth (for Packer/Ansible)
-sed -ri 's/^#?(PermitRootLogin)\s.*/\1 yes/' /etc/ssh/sshd_config
-sed -ri 's/^#?(PasswordAuthentication)\s.*/\1 yes/' /etc/ssh/sshd_config
+## Enable password authentication via PAM
+sed -ri 's/^#?(UsePAM).*/\1 yes/' /etc/ssh/sshd_config
+
+## Disable SSH PasswordAuthentication
+sed -ri 's/^#?(PasswordAuthentication).*/\1 no/' /etc/ssh/sshd_config
 
 ## GRUB: force predictable eth[n] names (add only if missing)
 sed -ri '
