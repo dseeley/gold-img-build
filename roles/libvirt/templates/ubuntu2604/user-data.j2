@@ -45,7 +45,7 @@ autoinstall:
   ##       snapd also should be removed in here, because it cannot be removed entirely in late-commands, due to that being a chroot environment.
   user-data:
     disable_root: false
-    ssh_pwauth: true
+    ssh_pwauth: false
     users: {{ userinfo }}
     power_state: { mode: poweroff }
     write_files:

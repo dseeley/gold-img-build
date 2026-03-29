@@ -17,17 +17,13 @@ userinfo:
 #    shell: /bin/bash
 
 base_os:
-  alma1010:   #NOTE: Cannot use the 'live-server' version for 18.04, as this only provides subiquity *without* autoinstall
+  alma1010:
     name: "alma1010"
     iso_url: "https://repo.almalinux.org/almalinux/10/isos/x86_64/AlmaLinux-10.1-x86_64-minimal.iso"
     iso_checksum: "none"
   ubuntu1804:   #NOTE: Cannot use the 'live-server' version for 18.04, as this only provides subiquity *without* autoinstall
     name: "ubuntu1804"
     iso_url: "http://cdimage.ubuntu.com/releases/18.04/release/ubuntu-18.04.6-server-amd64.iso"
-    iso_checksum: "none"
-  ubuntu2004_legacy:
-    name: "ubuntu2004l"
-    iso_url: "http://cdimage.ubuntu.com/cdimage/ubuntu-legacy-server/releases/20.04/release/ubuntu-20.04.1-legacy-server-amd64.iso"
     iso_checksum: "none"
   ubuntu2004:
     name: "ubuntu2004"
@@ -43,13 +39,12 @@ base_os:
     iso_checksum: "none"
   ubuntu2604:
     name: "ubuntu2604"
-#    iso_url: "https://releases.ubuntu.com/26.04-snapshot1/ubuntu-26.04-live-server-amd64.iso"
-#    iso_url: "https://cdimage.ubuntu.com/releases/26.04/ubuntu-26.04-snapshot4-live-server-amd64.iso"
-    iso_url: "https://cdimage.ubuntu.com/ubuntu-server/daily-live/current/resolute-live-server-amd64.iso"
+    iso_url: "https://releases.ubuntu.com/26.04/ubuntu-26.04-beta-live-server-amd64.iso"
+#    iso_url: "https://cdimage.ubuntu.com/ubuntu-server/daily-live/current/resolute-live-server-amd64.iso"
     iso_checksum: "none"
 
 
-packer_pkg_url: "https://releases.hashicorp.com/packer/1.14.3/packer_1.14.3_linux_amd64.zip"
+packer_pkg_url: "https://releases.hashicorp.com/packer/1.15.1/packer_1.15.1_linux_amd64.zip"
 
 image_config:
   disk_size_mb: "12288"
@@ -79,7 +74,7 @@ image_config:
     firmware: "efi"
     fileformat: "qcow2"
     storage_pool: "/media/vdisks"
-    plugin: "github.com/hashicorp/qemu v1.1.1"
+    plugin: "github.com/hashicorp/qemu v1.1.4"
   xcp_ng:
     host: "192.168.1.71"
     username: "root"
