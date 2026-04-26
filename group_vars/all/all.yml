@@ -39,8 +39,7 @@ base_os:
     iso_checksum: "none"
   ubuntu2604:
     name: "ubuntu2604"
-    iso_url: "https://releases.ubuntu.com/26.04/ubuntu-26.04-beta-live-server-amd64.iso"
-#    iso_url: "https://cdimage.ubuntu.com/ubuntu-server/daily-live/current/resolute-live-server-amd64.iso"
+    iso_url: "https://releases.ubuntu.com/26.04/ubuntu-26.04-live-server-amd64.iso"
     iso_checksum: "none"
 
 
