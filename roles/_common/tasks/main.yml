@@ -1,10 +1,13 @@
 ---
 
 - name: create temporary directory
-  tempfile:
+  ansible.builtin.tempfile:
+    path: "./"
     state: directory
     suffix: PackerBuildTMP
   register: tmp_build_dir
+
+- debug: msg="{{tmp_build_dir}}"
 
 - name: "Create {{cloud_type}}__{{os_id}} directory"
   file:

@@ -57,10 +57,11 @@
         <clock offset='localtime'/>
         <devices>
           <emulator>/usr/bin/qemu-system-x86_64</emulator>
+          <controller type='scsi' index='0' model='virtio-scsi'/>
           <disk type='file' device='disk'>
             <driver name='qemu' type='qcow2' discard='unmap'/>
             <source file='{{image_filepath}}'/>
-            <target dev='vda' bus='virtio'/>
+            <target dev='sda' bus='scsi'/>
           </disk>
           <interface type='direct'>
             <source dev='br0' mode='vepa'/>

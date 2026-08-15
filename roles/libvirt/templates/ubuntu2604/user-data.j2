@@ -112,6 +112,9 @@ autoinstall:
 {% endif  %}
     - curtin in-target -- /usr/bin/apt-get update
     - curtin in-target -- /usr/bin/apt-get --purge -y remove apport bcache-tools btrfs-progs byobu cloud-initramfs-copymods cloud-initramfs-dyn-netconf friendly-recovery fwupd landscape-common lxd-agent-loader ntfs-3g open-vm-tools plymouth plymouth-theme-ubuntu-text popularity-contest screen sosreport tmux ufw
+{% if image_config.remove_kdump is defined and image_config.remove_kdump %}
+    - curtin in-target -- /usr/bin/apt-get --purge -y remove kdump-tools linux-crashdump
+{% endif  %}
     - curtin in-target -- /usr/bin/apt-get -y dist-upgrade
     - curtin in-target -- /usr/bin/apt-get -y --purge autoremove
     - curtin in-target -- /usr/bin/apt-get -y autoclean
