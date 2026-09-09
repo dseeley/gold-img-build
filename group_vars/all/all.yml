@@ -18,28 +18,22 @@ userinfo:
 
 base_os:
   alma10:
-    name: "alma10"
     iso_url: "https://repo.almalinux.org/almalinux/10/isos/x86_64/AlmaLinux-10.2-x86_64-minimal.iso"
     iso_checksum: "none"
   ubuntu1804:   #NOTE: Cannot use the 'live-server' version for 18.04, as this only provides subiquity *without* autoinstall
-    name: "ubuntu1804"
     iso_url: "http://cdimage.ubuntu.com/releases/18.04/release/ubuntu-18.04.6-server-amd64.iso"
     iso_checksum: "none"
   ubuntu2004:
-    name: "ubuntu2004"
     iso_url: "https://releases.ubuntu.com/20.04/ubuntu-20.04.6-live-server-amd64.iso"
     iso_checksum: "none"
   ubuntu2204:
-    name: "ubuntu2204"
     iso_url: "https://releases.ubuntu.com/22.04/ubuntu-22.04.5-live-server-amd64.iso"
     iso_checksum: "none"
   ubuntu2404:
-    name: "ubuntu2404"
-    iso_url: "https://releases.ubuntu.com/24.04/ubuntu-24.04.3-live-server-amd64.iso"
+    iso_url: "https://releases.ubuntu.com/24.04/ubuntu-24.04.4-live-server-amd64.iso"
     iso_checksum: "none"
   ubuntu2604:
-    name: "ubuntu2604"
-    iso_url: "https://releases.ubuntu.com/26.04/ubuntu-26.04-live-server-amd64.iso"
+    iso_url: "https://releases.ubuntu.com/26.04.1/ubuntu-26.04.1-live-server-amd64.iso"
     iso_checksum: "none"
 
 

@@ -14,7 +14,7 @@
         "fb=false ",
         "initrd=/install/initrd.gz ",
         "locale=en_GB.UTF-8 ",
-        "netcfg/get_hostname={{base_os[os_id].name}}-template ",
+        "netcfg/get_hostname={{os_id}}-template ",
         "grub-installer/bootdev=/dev/sda ",
         "debian-installer/add-kernel-opts string net.ifnames=0 biosdevname=0 ",
         "ks=floppy:/kickstart.cfg ---<enter>"

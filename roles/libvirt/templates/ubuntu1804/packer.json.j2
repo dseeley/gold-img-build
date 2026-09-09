@@ -12,7 +12,7 @@
         " net.ifnames=0 biosdevname=0",
 {#        " ks=http://{% raw %}{{ .HTTPIP }}:{{ .HTTPPort }}{% endraw %}/kickstart.cfg",#}
         " ks=floppy:/kickstart.cfg",
-        " netcfg/get_hostname={{base_os[os_id].name}}-template ",
+        " netcfg/get_hostname={{os_id}}-template ",
         " debconf/frontend=noninteractive",
         " ---<enter><wait1s>",
         "initrd /install/initrd.gz<enter><wait1s>",
@@ -31,7 +31,7 @@
         "fb=false ",
         "initrd=/install/initrd.gz ",
         "locale=en_GB.UTF-8 ",
-        "netcfg/get_hostname={{base_os[os_id].name}}-template ",
+        "netcfg/get_hostname={{os_id}}-template ",
         "grub-installer/bootdev=/dev/vda ",
         "debian-installer/add-kernel-opts string net.ifnames=0 biosdevname=0 ",
         "ks=floppy:/kickstart.cfg ---<enter>"

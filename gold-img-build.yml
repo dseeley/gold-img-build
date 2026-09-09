@@ -15,7 +15,7 @@
   tasks:
     - name: Set image_name (must be a 'fact' not a group_vars variable, because the pipe lookup will change per host/group)
       set_fact:
-        image_name: "gold-{{base_os[os_id].name}}-{{ lookup('pipe','date +%Y%m%d%H%M%S') }}"
+        image_name: "gold-{{os_id}}-{{ lookup('pipe','date +%Y%m%d%H%M%S') }}"
 
     - name: non-libvirt provisioning (localhost)
       include_role:

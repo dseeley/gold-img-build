@@ -51,9 +51,9 @@ autoinstall:
     write_files:
       - content: |
           disable_vmware_customization: false
-        owner: root:root
-        permissions: '0644'
-        path: /etc/cloud/cloud.cfg.d/99-installer.cfg
+          owner: root:root
+          permissions: '0644'
+          path: /etc/cloud/cloud.cfg.d/99-installer.cfg
       - content: |
           [Unit]
           Description=Gold-image pre-shutdown activities.  clean cloud-init, empty journal, remove self
@@ -118,6 +118,6 @@ autoinstall:
     - curtin in-target -- echo "poll-interval=7\n" >> /etc/vmware-tools/tools.conf
     - curtin in-target -- /usr/bin/apt-get update
     - curtin in-target -- /usr/bin/apt-get --purge -y remove apport bcache-tools btrfs-progs byobu cloud-initramfs-copymods cloud-initramfs-dyn-netconf friendly-recovery fwupd landscape-common lxd-agent-loader ntfs-3g plymouth plymouth-theme-ubuntu-text popularity-contest screen sosreport tmux ufw
-    - curtin in-target -- /usr/bin/apt-get -y dist-upgrade
+    - curtin in-target -- env DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true /usr/bin/apt-get -y -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold dist-upgrade
     - curtin in-target -- /usr/bin/apt-get -y --purge autoremove
     - curtin in-target -- /usr/bin/apt-get -y autoclean
