@@ -45,15 +45,16 @@ d-i time/zone string Europe/London
 d-i clock-setup/ntp boolean true
 
 ### Accounts
-# Extra accounts from userinfo are created by postinst.sh. Root is preseeded
-# here because debian-installer will not finish while root has no password.
+# Root is preseeded here because debian-installer will not finish while root
+# has no password. userinfo (keys and extra users) is applied by cloud-init
+# user-data on the first boot of the installed system.
 d-i passwd/root-login boolean true
 d-i passwd/make-user boolean false
 d-i passwd/root-password-crypted password {{ (userinfo | selectattr('name', 'equalto', 'root'))[0].hashed_passwd | trim }}
 
 ### Partitioning
 # One filesystem on the whole disk, no LVM and no swap partition.
-# A swap file (or its removal) is handled in postinst.sh from image_config.swapfile_mb.
+# A swap file (or its removal) is handled on first boot from image_config.swapfile_mb.
 # The disk name is chosen at runtime: virtio disks are /dev/vda, IDE disks are not.
 d-i partman/early_command string debconf-set partman-auto/disk "$(list-devices disk | head -n1)"
 d-i partman-auto/method string regular
@@ -100,7 +101,7 @@ d-i partman/confirm_nooverwrite boolean true
 ### Base system
 # linux-image-cloud-amd64 is the Debian VM kernel, equivalent to Ubuntu's linux-virtual.
 d-i base-installer/kernel/image string linux-image-cloud-amd64
-d-i base-installer/install-recommends boolean false
+d-i base-installer/install-recommends boolean true
 d-i pkgsel/install-language-support boolean false
 
 ### Packages
@@ -126,12 +127,15 @@ d-i debian-installer/add-kernel-opts string net.ifnames=0 biosdevname=0
 ### Finish
 d-i finish-install/reboot_in_progress note
 d-i cdrom-detect/eject boolean true
-# Packer waits for the guest to power itself off (communicator is none).
+# Stay on poweroff unless the late command succeeds. A failed install then
+# stops, instead of booting a half-built system. Success sets this to false
+# so the installed system boots. cloud-init user-data powers it off, which
+# is what Packer waits for (communicator is none).
 d-i debian-installer/exit/poweroff boolean true
 
 ### Late command
-# postinst.sh is rendered next to this file and served from the packer HTTP directory.
-# The preseed URL on the kernel command line is how we find that directory.
+# user-data is rendered next to this file and served from the packer HTTP
+# directory. The preseed URL on the kernel command line is how we find it.
 # Do not use ${...} in this command. cdebconf expands that as a template
 # directive, and a value that does not start with '!' aborts the frontend
 # (question.c lookup_directive). The installer then respawns and loops.
@@ -139,36 +143,28 @@ d-i debian-installer/exit/poweroff boolean true
 # in pkgsel/include. apt-install unmounts the netinst image, then
 # load-install-cd asks for that disc (Media change) because the target
 # cannot see the drive. Removing the cd id makes any later apt-install
-# skip that prompt. Microcode stays off with the hook.
+# skip that prompt. The sources rewrite is the same guard for 10apt-cdrom-setup.
 d-i preseed/late_command string \
   set -eu; \
   preseed_url=$(sed -n 's/.*preseed\/url=\(http:[^ ]*\).*/\1/p' /proc/cmdline); \
   test -n "$preseed_url"; \
-  postinst_url=$(printf '%s\n' "$preseed_url" | sed 's|/[^/]*$|/postinst.sh|'); \
-  mkdir -p /target/tmp; \
+  user_data_url=$(printf '%s\n' "$preseed_url" | sed 's|/[^/]*$|/user-data|'); \
+  mkdir -p /target/tmp /target/etc/cloud/cloud.cfg.d /target/etc/cloud/clean.d /target/etc/apt/sources.list.d; \
   if command -v wget >/dev/null 2>&1; then \
-    wget -O /target/tmp/postinst.sh "$postinst_url"; \
+    wget -O /target/tmp/gold-user-data "$user_data_url"; \
   else \
-    busybox wget -O /target/tmp/postinst.sh "$postinst_url"; \
+    busybox wget -O /target/tmp/gold-user-data "$user_data_url"; \
   fi; \
-  chmod 755 /target/tmp/postinst.sh; \
   if [ -f /etc/resolv.conf ]; then rm -f /target/etc/resolv.conf; cat /etc/resolv.conf > /target/etc/resolv.conf; fi; \
-  grep -q ' /target/dev ' /proc/mounts || mount --bind /dev /target/dev; \
-  set +e; \
-  in-target /tmp/postinst.sh; \
-  code=$?; \
-  set -e; \
-  umount /target/dev || true; \
-  rm -f /usr/lib/finish-install.d/08hw-detect /var/lib/install-cd.id; \
-  frontend=$(printenv DEBIAN_HAS_FRONTEND || true); \
-  if [ "$code" -ne 0 ] && [ -f /target/tmp/gold-fail.template ] && [ -n "$frontend" ]; then \
-    . /usr/share/debconf/confmodule; \
-    db_x_loadtemplatefile /target/tmp/gold-fail.template gold; \
-    db_subst gold/postinst-failed LOG "$(cat /target/tmp/gold-reason.txt)"; \
-    db_fset gold/postinst-failed seen false; \
-    db_input critical gold/postinst-failed || true; \
-    db_go || true; \
-    logger -t gold-postinst "$(cat /target/tmp/gold-reason.txt)"; \
-  fi; \
-  rm -f /target/tmp/postinst.sh /target/tmp/gold-fail.template /target/tmp/gold-reason.txt; \
-  exit "$code"
+  rm -f /target/etc/apt/sources.list.d/*.list /target/etc/apt/sources.list.d/*.sources || true; \
+  printf '%s\n' 'deb http://deb.debian.org/debian trixie main' 'deb http://deb.debian.org/debian trixie-updates main' 'deb http://security.debian.org/debian-security trixie-security main' > /target/etc/apt/sources.list; \
+  instance_id=$(cat /proc/sys/kernel/random/uuid); \
+  { printf '%s\n' 'datasource_list: [None]' 'datasource:' '  None:' '    metadata:' "      instance-id: $instance_id" '    userdata_raw: |'; sed 's/^/      /' /target/tmp/gold-user-data; } > /target/etc/cloud/cloud.cfg.d/99-installer.cfg; \
+  chmod 600 /target/etc/cloud/cloud.cfg.d/99-installer.cfg; \
+  printf '%s\n' 'policy: enabled' > /target/etc/cloud/ds-identify.cfg; \
+  printf '%s\n' 'grub_dpkg:' '  enabled: false' > /target/etc/cloud/cloud.cfg.d/20-disable-cc-dpkg-grub.cfg; \
+  printf '%s\n' '#!/bin/sh' 'rm -f /etc/cloud/cloud.cfg.d/99-installer.cfg' > /target/etc/cloud/clean.d/99-installer; \
+  chmod 755 /target/etc/cloud/clean.d/99-installer; \
+  rm -f /usr/lib/finish-install.d/08hw-detect /var/lib/install-cd.id /target/tmp/gold-user-data; \
+  . /usr/share/debconf/confmodule; \
+  db_set debian-installer/exit/poweroff false
