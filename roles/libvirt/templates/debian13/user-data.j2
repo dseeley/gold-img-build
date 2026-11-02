@@ -153,6 +153,37 @@ write_files:
       apt_get -y --purge autoremove
       apt_get -y autoclean
 
+      # Installer networking is ifupdown. Match the Ubuntu images: netplan
+      # renders eth0 DHCP for systemd-networkd. Do this after apt, then
+      # leave it for the next boot so this script does not drop its own route.
+      echo "+ netplan" >> "$LOG"
+      mkdir -p /etc/netplan /etc/cloud/cloud.cfg.d
+      cat > /etc/netplan/01-eth0.yaml << 'EOF'
+      network:
+        version: 2
+        renderer: networkd
+        ethernets:
+          eth0:
+            dhcp4: true
+      EOF
+      chmod 600 /etc/netplan/01-eth0.yaml
+      netplan generate >> "$LOG" 2>&1
+      systemctl enable systemd-networkd.service systemd-resolved.service >> "$LOG" 2>&1
+      ln -sf /run/systemd/resolve/stub-resolv.conf /etc/resolv.conf
+      printf '%s\n' 'system_info:' '  network:' '    renderers: [netplan]' > /etc/cloud/cloud.cfg.d/99-netplan.cfg
+      # Drop the installer's eth0 stanza before removing ifupdown, so a
+      # failed purge cannot leave both managers on the same interface.
+      mkdir -p /etc/network
+      cat > /etc/network/interfaces << 'EOF'
+      auto lo
+      iface lo inet loopback
+      EOF
+      rm -f /etc/network/interfaces.d/*
+      if dpkg-query -W -f='${Status}' ifupdown 2>/dev/null | grep -q 'install ok installed'; then
+        apt_get --purge -y remove ifupdown || echo "+ ifupdown purge failed" >> "$LOG"
+      fi
+      systemctl disable networking.service >> "$LOG" 2>&1 || true
+
       ## Only NoCloud on later boots, so a clone can take a new datasource.
       f=/etc/cloud/cloud.cfg.d/90_dpkg.cfg
       if [ -f "$f" ] && grep -q '^datasource_list:' "$f"; then
