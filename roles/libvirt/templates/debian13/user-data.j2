@@ -1,0 +1,229 @@
+#cloud-config
+# First boot of the installed system. Ubuntu puts the same work in autoinstall
+# late-commands plus the nested user-data section of one file. Debian has no
+# autoinstall, so both parts are this cloud-config and run after reboot.
+# The installer only installs this file. gold-firstboot runs from scripts-user,
+# inside cloud-final, so systemctl poweroff there never completes. power_state
+# runs after that script and powers off only if the script finished. A failed
+# apt leaves the guest running and Packer times out.
+disable_root: false
+ssh_pwauth: false
+# Keep the installer hostname. cloud-init's None metadata has no local-hostname.
+preserve_hostname: true
+# The disk is already the final size. Do not let cloud-init move partitions.
+growpart: {mode: 'off'}
+resize_rootfs: false
+# Runs after scripts-user. Exit 0 of the condition means power off.
+power_state:
+  mode: poweroff
+  condition: test -f /run/gold-firstboot-ok
+users: {{ userinfo }}
+# Debian has no admin group. userinfo entries from the Ubuntu templates use it.
+groups:
+  - admin
+write_files:
+  - content: |
+      %admin ALL=(ALL) NOPASSWD:ALL
+    owner: root:root
+    permissions: '0440'
+    path: /etc/sudoers.d/admin
+  - content: |
+      [Unit]
+      Description=Gold-image pre-shutdown activities.  clean cloud-init, empty journal, remove self
+
+      [Service]
+      Type=oneshot
+      RemainAfterExit=yes
+      ExecStart=/bin/true
+      ExecStop=/bin/bash -c 'while cloud-init status 2>&1 | grep -q "running"; do sleep 0.5; done; /usr/bin/cloud-init clean; rm -rf /var/log/journal/*; rm -f /etc/systemd/system/goldbuildfinish.service; /bin/systemctl daemon-reload'
+      TimeoutStopSec=30
+
+      [Install]
+      WantedBy=multi-user.target
+    owner: root:root
+    permissions: '0644'
+    path: /etc/systemd/system/goldbuildfinish.service
+  - content: |
+      #!/bin/bash
+      # Same steps as ubuntu2604 late-commands, then the first-boot user-data.
+      set -eu
+      export DEBIAN_FRONTEND=noninteractive
+      LOG=/var/log/gold-postinst.log
+      : > "$LOG"
+
+      apt_get() {
+        echo "+ apt-get $*" >> "$LOG"
+        apt-get -o Dpkg::Use-Pty=0 -o APT::Color=false \
+          -o Dpkg::Options::=--force-confdef \
+          -o Dpkg::Options::=--force-confold \
+          -o Acquire::Retries=3 \
+          -o Acquire::ForceIPv4=true \
+          "$@" >> "$LOG" 2>&1
+      }
+
+      # cloud-config does not wait for DHCP. apt needs a route.
+      i=0
+      while [ "$i" -lt 60 ]; do
+        if ip route show default | grep -q .; then
+          break
+        fi
+        i=$((i + 1))
+        sleep 1
+      done
+      ip route show default | grep -q .
+
+      ## Force the original eth[n] naming convention, so later provisioning sees eth0.
+      sed -ri 's/^(GRUB_CMDLINE_LINUX\s*=\s*)"(.*?)"$/\1"\2 net.ifnames=0 biosdevname=0"/' /etc/default/grub
+      if ! grep -Eq '^GRUB_CMDLINE_LINUX=.*net\.ifnames=0' /etc/default/grub; then
+        echo 'GRUB_CMDLINE_LINUX="net.ifnames=0 biosdevname=0"' >> /etc/default/grub
+      fi
+      ## Add a grub timeout, to allow us to get to the boot screen if needed.
+      sed -ri 's/^GRUB_TIMEOUT\s*=.*$/GRUB_TIMEOUT=5/' /etc/default/grub
+      if ! grep -Eq '^GRUB_TIMEOUT=' /etc/default/grub; then
+        echo 'GRUB_TIMEOUT=5' >> /etc/default/grub
+      fi
+      /usr/sbin/grub-mkconfig -o /boot/grub/grub.cfg
+{% if image_config.systemd_debug is defined and image_config.systemd_debug %}
+      sed -ri 's/^#(LogLevel\s*=\s*).*?/\1debug/' /etc/systemd/system.conf
+{% endif %}
+{% if image_config.swapfile_mb is defined and image_config.swapfile_mb|int == 0 %}
+      swapoff -a || true
+      sed -i -E '/[[:space:]]swap[[:space:]]/d' /etc/fstab
+      rm -f /swapfile /swap.img
+{% elif image_config.swapfile_mb is defined and image_config.swapfile_mb|int > 0 %}
+      if ! swapon --show=NAME --noheadings | grep -qx '/swapfile'; then
+        if ! fallocate -l '{{ image_config.swapfile_mb|int }}M' /swapfile; then
+          dd if=/dev/zero of=/swapfile bs=1M count='{{ image_config.swapfile_mb|int }}'
+        fi
+        chmod 600 /swapfile
+        mkswap /swapfile
+        swapon /swapfile
+      fi
+      grep -q '^/swapfile[[:space:]]' /etc/fstab || echo '/swapfile none swap sw 0 0' >> /etc/fstab
+{% endif %}
+      # Drop the install CD. finish-install may have left a cdrom source, and
+      # apt-get update then asks for that disc.
+      mkdir -p /etc/apt/sources.list.d
+      rm -f /etc/apt/sources.list.d/*.list /etc/apt/sources.list.d/*.sources || true
+      cat > /etc/apt/sources.list << 'EOF'
+      deb http://deb.debian.org/debian trixie main
+      deb http://deb.debian.org/debian trixie-updates main
+      deb http://security.debian.org/debian-security trixie-security main
+      EOF
+
+      apt_get update
+
+      ## Drop packages that ubuntu2604 purges, where Debian actually ships them.
+      ## apt-get remove fails the run if any name is unknown, so skip what is not installed.
+      remove_if_installed() {
+        p=""
+        installed=""
+        for p in "$@"; do
+          if dpkg-query -W -f='${Status}' "$p" 2>/dev/null | grep -q 'install ok installed'; then
+            installed="$installed $p"
+          fi
+        done
+        if [ -n "$installed" ]; then
+          # names are a fixed list with no whitespace
+          apt_get --purge -y remove $installed
+        fi
+      }
+
+      remove_if_installed \
+        bcache-tools \
+        btrfs-progs \
+        byobu \
+        cloud-initramfs-dyn-netconf \
+        fwupd \
+        ntfs-3g \
+        open-vm-tools \
+        plymouth \
+        popularity-contest \
+        screen \
+        sosreport \
+        tmux \
+        ufw \
+        installation-report \
+        reportbug \
+        apt-listchanges
+{% if image_config.remove_kdump is defined and image_config.remove_kdump %}
+      remove_if_installed kdump-tools
+{% endif %}
+      apt_get -y dist-upgrade
+      apt_get -y --purge autoremove
+      apt_get -y autoclean
+
+      # Installer networking is ifupdown. Match the Ubuntu images: netplan
+      # renders eth0 DHCP for systemd-networkd. Do this after apt, then
+      # leave it for the next boot so this script does not drop its own route.
+      echo "+ netplan" >> "$LOG"
+      mkdir -p /etc/netplan /etc/cloud/cloud.cfg.d
+      cat > /etc/netplan/01-eth0.yaml << 'EOF'
+      network:
+        version: 2
+        renderer: networkd
+        ethernets:
+          eth0:
+            dhcp4: true
+      EOF
+      chmod 600 /etc/netplan/01-eth0.yaml
+      netplan generate >> "$LOG" 2>&1
+      systemctl enable systemd-networkd.service systemd-resolved.service >> "$LOG" 2>&1
+      ln -sf /run/systemd/resolve/stub-resolv.conf /etc/resolv.conf
+      printf '%s\n' 'system_info:' '  network:' '    renderers: [netplan]' > /etc/cloud/cloud.cfg.d/99-netplan.cfg
+      # Drop the installer's eth0 stanza before removing ifupdown, so a
+      # failed purge cannot leave both managers on the same interface.
+      mkdir -p /etc/network
+      cat > /etc/network/interfaces << 'EOF'
+      auto lo
+      iface lo inet loopback
+      EOF
+      rm -f /etc/network/interfaces.d/*
+      if dpkg-query -W -f='${Status}' ifupdown 2>/dev/null | grep -q 'install ok installed'; then
+        apt_get --purge -y remove ifupdown || echo "+ ifupdown purge failed" >> "$LOG"
+      fi
+      systemctl disable networking.service >> "$LOG" 2>&1 || true
+
+      ## Only NoCloud on later boots, so a clone can take a new datasource.
+      f=/etc/cloud/cloud.cfg.d/90_dpkg.cfg
+      if [ -f "$f" ] && grep -q '^datasource_list:' "$f"; then
+        sed -ri 's/^(datasource_list:).*/\1 [ NoCloud, None ]/' "$f"
+      else
+        mkdir -p /etc/cloud/cloud.cfg.d
+        printf '%s\n' 'datasource_list: [ NoCloud, None ]' > "$f"
+      fi
+{% if image_config.remove_snapd is defined and image_config.remove_snapd %}
+      ## Debian does not install snapd. Remove it only when a package pulled it in.
+      if dpkg-query -W snapd >/dev/null 2>&1; then
+        apt_get --purge -y remove snapd
+      fi
+      rm -rf /root/snap /snap /var/snap /var/lib/snapd
+{% endif %}
+      rm -rf /var/cache/apt/* /var/lib/apt/lists/*
+
+      /bin/systemctl daemon-reload
+      /bin/systemctl start goldbuildfinish.service
+
+      ## Fill deleted space with zeroes so packer compaction can shrink the image.
+      ## ENOSPC is the expected end. Do not let it skip poweroff.
+      set +e
+      dd if=/dev/zero of=/zero bs=256M
+      rm -f /zero
+      set -e
+
+      ## Empty machine-id is regenerated on next boot. It is the DHCP client id and systemd ConditionFirstBoot.
+      echo "+ machine-id" >> "$LOG"
+      truncate -s0 /etc/machine-id
+      # Debian does not create /var/lib/dbus until dbus is installed.
+      if [ -e /var/lib/dbus/machine-id ] || [ -L /var/lib/dbus/machine-id ]; then
+        truncate -s0 /var/lib/dbus/machine-id
+      fi
+      ## Drop the one-shot config so the next boot does not run it again.
+      rm -f /etc/cloud/cloud.cfg.d/99-installer.cfg /usr/local/sbin/gold-firstboot
+      touch /run/gold-firstboot-ok
+      echo "+ ready for poweroff" >> "$LOG"
+    owner: root:root
+    permissions: '0755'
+    path: /usr/local/sbin/gold-firstboot
+runcmd:
+  - /usr/local/sbin/gold-firstboot

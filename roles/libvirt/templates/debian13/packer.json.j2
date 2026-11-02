@@ -1,0 +1,90 @@
+{
+  "builders": [
+    {
+      "type": "qemu",
+      "accelerator": "kvm",
+{# Debian 13 (trixie) uses debian-installer. Locale, keymap and the preseed URL must be on the kernel command line: those questions are asked before the preseed file is fetched. #}
+{# vga=normal nomodeset and framebuffer=false stay in front of "---", so they apply to the installer only. bterm on QEMU's framebuffer exits during preseed/late_command, init respawns it, and the screen flashes the startup line "Trying to enable the frame buffer...". fb=false no longer disables that framebuffer. #}
+{% if image_config.libvirt.firmware is defined and 'efi' in image_config.libvirt.firmware %}
+      "boot_command": [
+        "<up><wait1s><up><wait1s><up><wait1s>",
+        "c<wait1s>",
+        "set gfxpayload=text<enter><wait1s>",
+        "linux /install.amd/vmlinuz",
+        " auto=true priority=critical noprompt",
+        " ipv6.disable=1 net.ifnames=0 biosdevname=0 modprobe.blacklist=floppy",
+        " vga=normal nomodeset debian-installer/framebuffer=false",
+        " locale=en_GB.UTF-8 keymap=gb",
+        " keyboard-configuration/xkb-keymap=gb",
+        " console-setup/ask_detect=false",
+        " debconf/frontend=noninteractive",
+        " netcfg/choose_interface=eth0",
+        " netcfg/get_hostname={{os_id}}-template",
+        " netcfg/get_domain=local",
+        " preseed/url=http://{% raw %}{{ .HTTPIP }}:{{ .HTTPPort }}{% endraw %}/preseed.cfg",
+        " --- quiet<enter><wait1s>",
+        "initrd /install.amd/initrd.gz<enter><wait1s>",
+        "boot<enter>"
+      ],
+{% else %}
+      "boot_command": [
+        "<esc><wait1s>",
+        "install ",
+        "auto=true priority=critical noprompt ",
+        "ipv6.disable=1 net.ifnames=0 biosdevname=0 modprobe.blacklist=floppy ",
+        "vga=normal nomodeset debian-installer/framebuffer=false ",
+        "locale=en_GB.UTF-8 keymap=gb ",
+        "keyboard-configuration/xkb-keymap=gb ",
+        "console-setup/ask_detect=false ",
+        "debconf/frontend=noninteractive ",
+        "netcfg/choose_interface=eth0 ",
+        "netcfg/get_hostname={{os_id}}-template ",
+        "netcfg/get_domain=local ",
+        "preseed/url=http://{% raw %}{{ .HTTPIP }}:{{ .HTTPPort }}{% endraw %}/preseed.cfg ",
+        "--- quiet<enter>"
+      ],
+{% endif %}
+      "boot_key_interval": "25ms",
+      "boot_wait": "3s",
+      "communicator": "none",
+      "cpus": {{image_config.cpus}},
+      "disk_size": {{image_config.disk_size_mb}},
+{% if image_config.libvirt.firmware is defined and 'efi' in image_config.libvirt.firmware %}
+      {# Defining the devices (specifically, their boot indexes) manually is necessary to set the boot order to HD-first with the OVMF UEFI bootloader.  See https://discuss.hashicorp.com/t/building-uefi-images-with-qemu-kvm/18061/5 #}
+      "efi_boot": true,
+      "efi_firmware_code": "/usr/share/OVMF/OVMF_CODE_4M.fd",
+      "efi_firmware_vars": "/usr/share/OVMF/OVMF_VARS_4M.fd",
+      "qemuargs": [
+        ["-cpu", "host,-svm"],
+        ["-audiodev", "alsa,id=alsa"],
+        [ "-device", "qxl-vga,id=video0,ram_size=134217728,vram_size=134217728,vgamem_mb=32,max_outputs=1" ],
+        [ "-drive", "if=pflash,format=raw,read-only=on,file=/usr/share/ovmf/OVMF.fd" ],
+        [ "-device", "virtio-blk-pci,drive=drive0,bootindex=0" ],
+{# debian-installer loads its components from a CD device. An IDE CD is detected; a virtio-blk CD (used for the Ubuntu live ISO) is not. #}
+        [ "-device", "ide-cd,drive=cdrom0,bootindex=1" ],
+        [ "-drive",  "if=none,file={{image_config.libvirt.storage_pool}}/{{image_name}}/{{image_name}},id=drive0,cache=writeback,discard=ignore,format={{image_config.libvirt.fileformat}}" ],
+        [ "-drive",  "if=none,file={{base_os[os_id].iso_url | basename}},id=cdrom0,media=cdrom" ]
+      ],
+{% endif %}
+      "format": "{{image_config.libvirt.fileformat}}",
+      "headless": true,
+      "http_directory": "./{{cloud_type}}__{{os_id}}",
+      "iso_checksum": "none",
+      "iso_url": "{{base_os[os_id].iso_url | basename}}",
+      "iso_skip_cache": false,
+      "memory": "{{image_config.memory_mb}}",
+{% if image_config.net_bridge is defined %}
+      "net_bridge": "{{image_config.net_bridge}}",
+{% endif %}
+      "output_directory": "{{image_config.libvirt.storage_pool}}/{{image_name}}",
+      "shutdown_command": "#dummy_to_prevent_packer_doing_forcible_poweroff",
+{# Netinst downloads the rest of the system, so allow longer than the Ubuntu live-ISO builds. #}
+      "shutdown_timeout": "30m",
+      "ssh_username": "root",
+      "skip_compaction": false,
+      "use_pflash": true,
+      "vm_name": "{{image_name}}",
+      "vnc_bind_address": "0.0.0.0"
+    }
+  ]
+}
