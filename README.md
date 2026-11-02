@@ -9,6 +9,7 @@ Several configurations are provided (in `roles/<cloud_type>/templates/<os_id>/`)
 + **ubuntu2004**:  Uses the [autoinstall](https://ubuntu.com/server/docs/install/autoinstall-reference) mechanism
 + **ubuntu2004_legacy**:  Uses the legacy preseeding technology.
 + **ubuntu1804**:  Uses the legacy preseeding technology.
++ **debian13**: Uses the [Debian installer preseed](https://www.debian.org/releases/trixie/amd64/apb.en.html) (libvirt).
 + **alma1010**: "Uses RHEL kickstart.cfg"
 
 ## Prerequisites

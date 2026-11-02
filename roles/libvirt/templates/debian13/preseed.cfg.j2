@@ -1,0 +1,174 @@
+#_preseed_V1
+# Debian installer preseed for a minimal trixie gold image.
+# Kickstart directives are not understood by debian-installer.
+
+### Localization
+d-i debian-installer/locale string en_GB.UTF-8
+d-i localechooser/supported-locales multiselect en_GB.UTF-8
+d-i keyboard-configuration/xkb-keymap select gb
+d-i console-setup/ask_detect boolean false
+d-i console-setup/layoutcode string gb
+d-i console-setup/modelcode string pc105
+
+### Network
+# net.ifnames=0 is on the installer kernel command line, so the NIC is eth0.
+d-i netcfg/choose_interface select eth0
+d-i netcfg/disable_autoconfig boolean false
+d-i netcfg/dhcp_timeout string 60
+d-i netcfg/link_wait_timeout string 10
+# netcfg/hostname forces this name even when DHCP supplies one.
+d-i netcfg/get_hostname string {{os_id}}-template
+d-i netcfg/hostname string {{os_id}}-template
+d-i netcfg/get_domain string local
+d-i netcfg/wireless_wep string
+d-i hw-detect/load_firmware boolean false
+d-i hw-detect/firmware-lookup string never
+
+### Mirror
+d-i mirror/country string manual
+d-i mirror/http/hostname string deb.debian.org
+d-i mirror/http/directory string /debian
+d-i mirror/http/proxy string
+d-i apt-setup/use_mirror boolean true
+d-i apt-setup/cdrom/set-first boolean false
+d-i apt-setup/cdrom/set-next boolean false
+d-i apt-setup/cdrom/set-failed boolean false
+d-i apt-setup/disable-cdrom-entries boolean true
+d-i apt-setup/services-select multiselect security, updates
+d-i apt-setup/non-free-firmware boolean false
+d-i apt-setup/non-free boolean false
+d-i apt-setup/contrib boolean false
+
+### Clock
+d-i clock-setup/utc boolean true
+d-i time/zone string Europe/London
+d-i clock-setup/ntp boolean true
+
+### Accounts
+# Extra accounts from userinfo are created by postinst.sh. Root is preseeded
+# here because debian-installer will not finish while root has no password.
+d-i passwd/root-login boolean true
+d-i passwd/make-user boolean false
+d-i passwd/root-password-crypted password {{ (userinfo | selectattr('name', 'equalto', 'root'))[0].hashed_passwd | trim }}
+
+### Partitioning
+# One filesystem on the whole disk, no LVM and no swap partition.
+# A swap file (or its removal) is handled in postinst.sh from image_config.swapfile_mb.
+# The disk name is chosen at runtime: virtio disks are /dev/vda, IDE disks are not.
+d-i partman/early_command string debconf-set partman-auto/disk "$(list-devices disk | head -n1)"
+d-i partman-auto/method string regular
+d-i partman-lvm/device_remove_lvm boolean true
+d-i partman-md/device_remove_md boolean true
+d-i partman-lvm/confirm boolean true
+d-i partman-lvm/confirm_nooverwrite boolean true
+# GOTCHA: no_swap asks "return to the partitioning menu?". false means continue without swap.
+d-i partman-basicfilesystems/no_swap boolean false
+{% if image_config.libvirt.firmware is defined and 'efi' in image_config.libvirt.firmware %}
+d-i partman-auto/choose_recipe select gold
+d-i partman-partitioning/choose_label select gpt
+d-i partman-partitioning/default_label string gpt
+# Debian 13 recommends a 768 MB EFI system partition.
+d-i partman-auto/expert_recipe string gold :: \
+    768 768 768 fat32 \
+      $primary{ } $reusemethod{ } \
+      method{ efi } format{ } \
+    . \
+    4000 100000 -1 ext4 \
+      $primary{ } \
+      method{ format } format{ } \
+      use_filesystem{ } filesystem{ ext4 } \
+      mountpoint{ / } \
+    .
+{% else %}
+d-i partman-auto/choose_recipe select gold
+d-i partman-partitioning/choose_label select msdos
+d-i partman-partitioning/default_label string msdos
+d-i partman-auto/expert_recipe string gold :: \
+    4000 100000 -1 ext4 \
+      $primary{ } $bootable{ } \
+      method{ format } format{ } \
+      use_filesystem{ } filesystem{ ext4 } \
+      mountpoint{ / } \
+    .
+{% endif %}
+d-i partman-partitioning/confirm_write_new_label boolean true
+d-i partman/confirm_write_new_label boolean true
+d-i partman/choose_partition select finish
+d-i partman/confirm boolean true
+d-i partman/confirm_nooverwrite boolean true
+
+### Base system
+# linux-image-cloud-amd64 is the Debian VM kernel, equivalent to Ubuntu's linux-virtual.
+d-i base-installer/kernel/image string linux-image-cloud-amd64
+d-i base-installer/install-recommends boolean false
+d-i pkgsel/install-language-support boolean false
+
+### Packages
+# No tasksel "standard" task: the gold image stays minimal, same intent as ubuntu2604 autoinstall.
+d-i pkgsel/run_tasksel boolean false
+d-i pkgsel/include string openssh-server qemu-guest-agent cloud-guest-utils cloud-init sudo curl python3-pip ca-certificates unattended-upgrades{% if image_config.libvirt.firmware is defined and 'efi' in image_config.libvirt.firmware %} efibootmgr{% endif %}
+
+d-i pkgsel/upgrade select full-upgrade
+popularity-contest popularity-contest/participate boolean false
+unattended-upgrades unattended-upgrades/enable_auto_updates boolean true
+
+### Boot loader
+d-i grub-installer/only_debian boolean true
+d-i grub-installer/with_other_os boolean false
+d-i grub-installer/bootdev string default
+{% if image_config.libvirt.firmware is defined and 'efi' in image_config.libvirt.firmware %}
+# The image is moved to a new VM whose firmware has no Debian NVRAM entry.
+# The removable-media path (\EFI\BOOT\BOOTX64.EFI) is what that VM boots.
+d-i grub-installer/force-efi-extra-removable boolean true
+{% endif %}
+d-i debian-installer/add-kernel-opts string net.ifnames=0 biosdevname=0
+
+### Finish
+d-i finish-install/reboot_in_progress note
+d-i cdrom-detect/eject boolean true
+# Packer waits for the guest to power itself off (communicator is none).
+d-i debian-installer/exit/poweroff boolean true
+
+### Late command
+# postinst.sh is rendered next to this file and served from the packer HTTP directory.
+# The preseed URL on the kernel command line is how we find that directory.
+# Do not use ${...} in this command. cdebconf expands that as a template
+# directive, and a value that does not start with '!' aborts the frontend
+# (question.c lookup_directive). The installer then respawns and loops.
+# 08hw-detect runs next and apt-installs qemu-guest-agent, which is already
+# in pkgsel/include. apt-install unmounts the netinst image, then
+# load-install-cd asks for that disc (Media change) because the target
+# cannot see the drive. Removing the cd id makes any later apt-install
+# skip that prompt. Microcode stays off with the hook.
+d-i preseed/late_command string \
+  set -eu; \
+  preseed_url=$(sed -n 's/.*preseed\/url=\(http:[^ ]*\).*/\1/p' /proc/cmdline); \
+  test -n "$preseed_url"; \
+  postinst_url=$(printf '%s\n' "$preseed_url" | sed 's|/[^/]*$|/postinst.sh|'); \
+  mkdir -p /target/tmp; \
+  if command -v wget >/dev/null 2>&1; then \
+    wget -O /target/tmp/postinst.sh "$postinst_url"; \
+  else \
+    busybox wget -O /target/tmp/postinst.sh "$postinst_url"; \
+  fi; \
+  chmod 755 /target/tmp/postinst.sh; \
+  if [ -f /etc/resolv.conf ]; then rm -f /target/etc/resolv.conf; cat /etc/resolv.conf > /target/etc/resolv.conf; fi; \
+  grep -q ' /target/dev ' /proc/mounts || mount --bind /dev /target/dev; \
+  set +e; \
+  in-target /tmp/postinst.sh; \
+  code=$?; \
+  set -e; \
+  umount /target/dev || true; \
+  rm -f /usr/lib/finish-install.d/08hw-detect /var/lib/install-cd.id; \
+  frontend=$(printenv DEBIAN_HAS_FRONTEND || true); \
+  if [ "$code" -ne 0 ] && [ -f /target/tmp/gold-fail.template ] && [ -n "$frontend" ]; then \
+    . /usr/share/debconf/confmodule; \
+    db_x_loadtemplatefile /target/tmp/gold-fail.template gold; \
+    db_subst gold/postinst-failed LOG "$(cat /target/tmp/gold-reason.txt)"; \
+    db_fset gold/postinst-failed seen false; \
+    db_input critical gold/postinst-failed || true; \
+    db_go || true; \
+    logger -t gold-postinst "$(cat /target/tmp/gold-reason.txt)"; \
+  fi; \
+  rm -f /target/tmp/postinst.sh /target/tmp/gold-fail.template /target/tmp/gold-reason.txt; \
+  exit "$code"
